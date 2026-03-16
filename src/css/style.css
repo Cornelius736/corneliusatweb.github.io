@@ -111,7 +111,7 @@ li::marker {
     color: var(--sec-main);
 }
 img {
-    width: 50%;
+    width: 65%;
     height: auto;
     user-select: none;
 }
