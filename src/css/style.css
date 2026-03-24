@@ -2,15 +2,15 @@
 
 @font-face {
     font-family: "main-font";
-    src: url("../font/gabarito/Gabarito-Regular.ttf");
+    src: url("../font/gelasio/Gelasio-Regular.ttf");
 }
 @font-face {
     font-family: "h-font";
-    src: url("../font/story/StoryScript-Regular.ttf");
+    src: url("../font/story-script/StoryScript-Regular.ttf");
 }
 @font-face {
     font-family: "code-font";
-    src: url("../font/code/GoogleSansCode-Regular.ttf");
+    src: url("../font/sans-code/GoogleSansCode-Regular.ttf");
 }
 
 /* Variables */
