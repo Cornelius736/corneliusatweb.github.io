@@ -1,0 +1,274 @@
+@font-face {
+    font-family: "main";
+    src: url("../fonts/candal/Candal-Regular.ttf");
+}
+
+:root {
+    --main: #2844C3;
+    --off-main: #D2DAFF;
+    --white: #F1F1F1;
+    --bleach-white: #FFFFFF;
+    --black: #111111;
+}
+
+::selection {
+    background: var(--main);
+    color: var(--white);
+}
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "main";
+    scroll-behavior: smooth;
+}
+
+body {
+    background: url("../images/website-bg.png"), var(--white);
+    color: var(--black);
+    line-height: 2rem;
+}
+
+img {
+    width: 100%;
+    height: auto;
+    vertical-align: middle;
+    user-select: none;
+}
+
+a {
+    color: var(--main);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+a:hover, .body-nav a:hover, .body-footer a:hover {
+    text-decoration: underline;
+}
+
+p, a, li {
+    font-size: 1.25rem;
+}
+
+ul, ol {
+    padding-left: 3rem;
+}
+
+li::marker {
+    color: var(--main);
+}
+
+button {
+    background: transparent;
+    border: 0.2rem solid var(--main);
+    color: var(--main);
+    padding: 1rem 2rem;
+    border-radius: 50rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover {
+    background: var(--main);
+    color: var(--white);
+}
+
+button a, button a:hover, .body-header a, .body-nav a, .body-nav-r-menu a, .body-footer a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.body {
+    background: var(--bleach-white);
+    box-shadow: -0.5rem 0 1rem rgba(0, 0, 0, 0.3), 0.5rem 0 1rem rgba(0, 0, 0, 0.3);
+    width: 50%;
+    min-height: 100vh;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.body-header {
+    padding: 3rem 0;
+    text-align: center;
+}
+
+.body-header a {
+    font-size: 4rem;
+}
+
+.body-nav, .body-nav-r-menu {
+    background: var(--main);
+    color: var(--white);
+    padding: 1rem;
+}
+
+.body-nav a {
+    margin: 0 1rem;
+}
+
+.body-content {
+    padding: 3rem 2rem;
+    flex: 1;
+}
+
+.body-card {
+    background: var(--off-main);
+    border: 0.2rem solid var(--main);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.body-blog-card {
+    background: var(--off-main);
+    border-left: 0.75rem solid var(--off-main);
+    border-top-right-radius: 0.75rem;
+    border-bottom-right-radius: 0.75rem;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.body-blog-card:hover {
+    border-left: 0.75rem solid var(--main);
+}
+
+.body-footer {
+    background: var(--main);
+    color: var(--white);
+    padding: 1rem;
+    text-align: center;
+}
+
+.h {
+    font-size: 3.5rem;
+    line-height: 4.5rem;
+}
+
+.sh {
+    font-size: 2.35rem;
+    line-height: 3rem;
+}
+
+.ico {
+    width: 1.5em;
+}
+
+.r {
+    display: none;
+}
+
+.toggle-target {
+    display: none;
+}
+
+.body-nav.r {
+    text-align: center;
+}
+
+.body-nav-r-menu {
+    padding: 0;
+    text-align: center;
+}
+
+.body-nav-r-menu a {
+    display: block;
+    margin: 1rem 0;
+}
+
+.center {
+    text-align: center;
+}
+
+.right {
+    text-align: right;
+}
+
+.image-gallery {
+    position: relative;
+}
+
+.slide {
+    display: none;
+}
+
+.slide-prev, .slide-next {
+    position: absolute;
+    top: 40%;
+    width: auto;
+    padding: 1rem;
+    margin-top: -3.125rem;
+    color: var(--white);
+    font-size: 2.5rem;
+    border-top-right-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.slide-next {
+    right: 0;
+    border-radius: 0;
+    border-top-left-radius: 0.5rem;
+    border-bottom-left-radius: 0.5rem;
+}
+
+.slide-prev:hover, .slide-next:hover {
+    background: rgba(0, 0, 0, 0.8);
+    text-decoration: none;
+}
+
+.slide-number {
+    background: rgba(0, 0, 0, 0.8);
+    color: var(--white);
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+    border-bottom-right-radius: 0.5rem;
+    position: absolute;
+    top: 0;
+}
+
+.slide-caption-container {
+    text-align: center;
+    background: var(--black);
+    padding: 0.25rem;
+    color: var(--white);
+}
+
+.slide-column-container:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.slide-column {
+    float: left;
+}
+
+.slide-icon {
+    opacity: 0.6;
+    cursor: pointer;
+}
+
+.slide-active, .slide-icon:hover {
+    opacity: 1;
+}
+
+@media screen and (max-width: 37.5rem) {
+    button {
+        margin: 0.25rem 0;
+    }
+    .body {
+        width: 100%;
+    }
+    .body-header a {
+        font-size: 2rem;
+    }
+    .n {
+        display: none;
+    }
+    .r, .toggle-target.open {
+        display: block;
+    }
+}
