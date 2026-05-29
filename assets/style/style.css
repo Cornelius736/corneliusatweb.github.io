@@ -256,8 +256,19 @@ button a, button a:hover, .body-header a, .body-nav a, .body-nav-r-menu a, .body
 }
 
 @media screen and (max-width: 37.5rem) {
+    p, a, li {
+        font-size: 1.1rem;
+    }
     button {
         margin: 0.25rem 0;
+    }
+    .h {
+        font-size: 2.5rem;
+        line-height: 3rem;
+    }
+    .sh {
+        font-size: 1.75rem;
+        line-height: 1.5rem;
     }
     .body {
         width: 100%;
