@@ -43,7 +43,7 @@ a {
     cursor: pointer;
 }
 
-a:hover, .body-nav a:hover, .body-footer a:hover {
+a:hover, .body-footer a:hover {
     text-decoration: underline;
 }
 
@@ -104,8 +104,16 @@ button a, button a:hover, .body-header a, .body-nav a, .body-nav-r-menu a, .body
     padding: 1rem;
 }
 
-.body-nav a {
-    margin: 0 1rem;
+.body-nav button {
+    background: transparent;
+    border: 0.2rem solid transparent;
+    color: inherit;
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+}
+
+.body-nav button:hover {
+    border: 0.2rem solid var(--white);
 }
 
 .body-content {
