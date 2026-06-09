@@ -1,6 +1,6 @@
 @font-face {
     font-family: "main";
-    src: url("../fonts/candal/Candal-Regular.ttf");
+    src: url("../fonts/lexend/LexendDeca-Regular.ttf");
 }
 
 :root {
@@ -97,7 +97,7 @@ button a, button a:hover, .body-header a, .body-nav a, .body-nav-r-menu a, .body
 }
 
 .body-header a {
-    font-size: 4rem;
+    font-size: 5rem;
 }
 
 .body-nav, .body-nav-r-menu {
@@ -284,7 +284,7 @@ button a, button a:hover, .body-header a, .body-nav a, .body-nav-r-menu a, .body
         width: 100%;
     }
     .body-header a {
-        font-size: 2rem;
+        font-size: 2.5rem;
     }
     .n {
         display: none;
