@@ -3,11 +3,763 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../../../source/style/CSS/index.css">
-    <link rel="shortcut icon" href="../../../source/media/logo_pfp.png" type="image/x-icon">
-    <title>A.P.M Web App ~w~ corneliusatweb.com</title>
+    <link rel="stylesheet" href="assets/style/index.css">
+    <link rel="shortcut icon" href="assets/images/apm-logo.png" type="image/x-icon">
+    <title>Instance (A.P.M Web App) ~w~ corneliusatweb.com</title>
 </head>
 <body>
-    <p>Under Construction</p>
+    <div class="container tabs-wrapper">
+        <div class="side tab-buttons">
+            <div class="side-title">
+                <h1>A.P.M</h1>
+            </div>
+            <button class="tab-btn" data-tab="home"><img src="assets/icons/home-icon.svg" alt="home" class="icon"> Home <span class="active-hide">>></span></button>
+            <button class="tab-btn" data-tab="check"><img src="assets/icons/checklist-icon.svg" alt="check" class="icon"> Checklist <span class="active-hide">>></span></button>
+            <button class="tab-btn" data-tab="color"><img src="assets/icons/color-picker-icon.svg" alt="color" class="icon"> Color Picker <span class="active-hide">>></span></button>
+            <button class="tab-btn" data-tab="converters"><img src="assets/icons/converters-icon.svg" alt="converters" class="icon"> Converters <span class="active-hide">>></span></button>
+            <button class="tab-btn" data-tab="tally"><img src="assets/icons/tally-icon.svg" alt="tally" class="icon"> Tally <span class="active-hide">>></span></button>
+            <button class="tab-btn" data-tab="more"><img src="assets/icons/more-options-icon.svg" alt="more" class="icon"> More Options <span class="active-hide">>></span></button>
+        </div>
+        <div class="body tab-panels">
+            <div class="tab-panel" data-tab="home">
+                <h1>Hello.</h1>
+                <br><br>
+                <p>You just opened the A.P.M Web App! What is A.P.M, you ask? Well, "A.P.M" is short for <i>Applicatio Productivitatis Multiusus</i>. More specifically, A.P.M is a simple app designed to host a plethora of very useful and general tools that can easily be required in and applied into a wide variety of jobs and projects. That is precisely why ease of access is a <b><u>key point</u></b> of A.P.M.</p>
+                <br>
+                <p>Formerly, A.P.M was available for download on the Windows OS, built using Python. However, staying true to the <b><u>key point</u></b>, I decided to move the entire app onto the web, as it was not only easier for me to build and maintain (since I have far more experience with HTML, CSS, and JS than with Python), but it is also easier for other people to access it as well.</p>
+                <br>
+                <p>Use the navigation bar on the left to navigate the app. I am still working on a mobile port.</p>
+                <br><br>
+                <div class="card">
+                    <p><b>Basic Info:</b></p>
+                    <br>
+                    <ul>
+                        <li>All data (such as save files) are saved in your local browser's cache.</li>
+                        <li>Internet access is required unless powered locally.</li>
+                        <li>Version: 2.0-A</li>
+                    </ul>
+                    <br>
+                    <p>&copy; 2026-Present | Made by <a href="https://corneliusatweb.com/" target="_blank">Cornelius</a> with minor development assistance from AI (<a href="https://claude.ai/" target="_blank">https://claude.ai/</a>).</p>
+                </div>
+                <br><br>
+                <h2>Change Log</h2>
+                <br><br>
+                <p>V-2.0-A (14/Aug/2026): Initial release of the 2.0 Web App. Ported from the desktop app.</p>
+            </div>
+            <div class="tab-panel" data-tab="check">
+                <h1>Checklist</h1>
+                <br><br>
+                <p>(i) Use the below input to type in your entry, such as a to-do task, and then press the "Add" button to add your entry to the below list. From there you can mark individual entries as completed and delete them at your discretion.</p>
+                <br><br>
+                <div class="col-wrapper row">
+                    <div class="col90">
+                        <input type="text" placeholder="Entry..." id="itemInput" style="border: 0.1rem solid var(--main_main); height: 3rem; border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                    </div>
+                    <div class="col10">
+                        <button id="addBtn" style="margin: 0; height: 3rem; border-top-left-radius: 0; border-bottom-left-radius: 0;">+ Add</button>
+                    </div>
+                </div>
+                <br><br><br><br>
+                <div class="toolbar">
+                    <button id="selectAllBtn">Select All</button>
+                    <button id="deselectAllBtn">Deselect All</button>
+                    <button id="deleteSelectedBtn">Delete Selected</button>
+                </div>
+                <br>
+                <div id="list"></div>
+            </div>
+            <div class="tab-panel" data-tab="color">
+                <h1>Color Picker</h1>
+                <br><br>
+                <div class="picker-row">
+                    <div class="sv-square" id="svSquare">
+                        <div class="sv-cursor" id="svCursor"></div>
+                    </div>
+                    <br>
+                    <div>
+                        <input type="range" class="hue-slider" id="hueSlider" min="0" max="360" value="0">
+                        <input type="range" class="alpha-slider" id="alphaSlider" min="0" max="100" value="100">
+                        <span id="alphaValue">100%</span>
+                    </div>
+                </div>
+                <br>
+                <div class="swatch checkerboard" id="swatch">
+                    <div class="swatch-fill" id="swatchFill"></div>
+                </div>
+                <br>
+                <div>
+                    <label for="hexInput">HEX</label>
+                    <input type="text" id="hexInput" style="width: 30%;" value="#FF0000">
+                </div>
+                <br>
+                <div class="four-input-flex">
+                    <label>RGBA</label>
+                    <input type="number" id="rInput" min="0" max="255" value="255">
+                    <input type="number" id="gInput" min="0" max="255" value="0">
+                    <input type="number" id="bInput" min="0" max="255" value="0">
+                    <input type="number" id="aInputRgb" min="0" max="100" value="100">
+                </div>
+                <br>
+                <div class="four-input-flex">
+                    <label>HSLA</label>
+                    <input type="number" id="hInput" min="0" max="360" value="0">
+                    <input type="number" id="sInput" min="0" max="100" value="100">
+                    <input type="number" id="lInput" min="0" max="100" value="50">
+                    <input type="number" id="aInputHsl" min="0" max="100" value="100">
+                </div>
+                <br>
+                <div class="four-input-flex">
+                    <label>CMYK</label>
+                    <input type="number" id="cInput" min="0" max="100" value="0">
+                    <input type="number" id="mInput" min="0" max="100" value="100">
+                    <input type="number" id="yInput" min="0" max="100" value="100">
+                    <input type="number" id="kInput" min="0" max="100" value="0">
+                </div>
+                <br>
+                <div>
+                    <label>Filter</label>
+                    <input type="text" id="filterOutput" style="width: 80%;" readonly>
+                    <button id="copyBtn">Copy</button>
+                </div>
+            </div>
+            <div class="tab-panel" data-tab="converters">
+                <h1 id="top">Converters</h1>
+                <br><br>
+                <button><a href="#l">Length</a></button>
+                <button><a href="#m">Mass</a></button>
+                <button><a href="#v">Volume</a></button>
+                <button><a href="#tmp">Temperature</a></button>
+                <button><a href="#a">Area</a></button>
+                <button><a href="#d">Data</a></button>
+                <button><a href="#e">Energy</a></button>
+                <button><a href="#p">Pressure</a></button>
+                <button><a href="#s">Speed</a></button>
+                <button><a href="#t">Time</a></button>
+                <button><a href="#dig">Digital</a></button>
+                <br><br><br>
+                <h2 id="l">Length <a href="#top">[Back]</a></h2>
+                <br>
+                <section class="category" data-category="length">
+                    <div class="pair-row">
+                        <label>mm</label><input type="number" data-unit="mm">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="cm"><label>cm</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>cm</label><input type="number" data-unit="cm">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="m"><label>m</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>m</label><input type="number" data-unit="m">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="km"><label>km</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>km</label><input type="number" data-unit="km">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="um"><label>μm</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>μm</label><input type="number" data-unit="um">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="nm"><label>nm</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>nm</label><input type="number" data-unit="nm">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="in"><label>in</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>in</label><input type="number" data-unit="in">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="ft"><label>ft</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>ft</label><input type="number" data-unit="ft">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="yd"><label>yd</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>yd</label><input type="number" data-unit="yd">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="mi"><label>mi</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>mi</label><input type="number" data-unit="mi">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="nmi"><label>nmi</label>
+                    </div>
+                </section>
+                <br><br>
+                <h2 id="m">Mass <a href="#top">[Back]</a></h2>
+                <br>
+                <section class="category" data-category="mass">
+                    <div class="pair-row">
+                        <label>mg</label><input type="number" data-unit="mg">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="g"><label>g</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>g</label><input type="number" data-unit="g">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="kg"><label>kg</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>kg</label><input type="number" data-unit="kg">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="t"><label>t</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>t</label><input type="number" data-unit="t">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="oz"><label>oz</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>oz</label><input type="number" data-unit="oz">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="lb"><label>lb</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>lb</label><input type="number" data-unit="lb">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="st"><label>st</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>st</label><input type="number" data-unit="st">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="ustn"><label>US tn</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>US tn</label><input type="number" data-unit="ustn">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="uktn"><label>UK tn</label>
+                    </div>
+                </section>
+                <br><br>
+                <h2 id="v">Volume <a href="#top">[Back]</a></h2>
+                <br>
+                <section class="category" data-category="volume">
+                    <div class="pair-row">
+                        <label>ml</label><input type="number" data-unit="ml">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="l"><label>l</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>l</label><input type="number" data-unit="l">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="m3"><label>m³</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>m³</label><input type="number" data-unit="m3">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="in3"><label>in³</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>in³</label><input type="number" data-unit="in3">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="ft3"><label>ft³</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>ft³</label><input type="number" data-unit="ft3">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="ustsp"><label>US tsp</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>US tsp</label><input type="number" data-unit="ustsp">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="ustbsp"><label>US tbsp</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>US tbsp</label><input type="number" data-unit="ustbsp">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="usfloz"><label>US fl oz</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>US fl oz</label><input type="number" data-unit="usfloz">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="uscup"><label>US cup</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>US cup</label><input type="number" data-unit="uscup">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="uspt"><label>US pt</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>US pt</label><input type="number" data-unit="uspt">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="usqt"><label>US qt</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>US qt</label><input type="number" data-unit="usqt">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="usgal"><label>US gal</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>US gal</label><input type="number" data-unit="usgal">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="ukfloz"><label>UK fl oz</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>UK fl oz</label><input type="number" data-unit="ukfloz">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="ukpt"><label>UK pt</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>UK pt</label><input type="number" data-unit="ukpt">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="ukgal"><label>UK gal</label>
+                    </div>
+                </section>
+                <br><br>
+                <h2 id="tmp">Temperature <a href="#top">[Back]</a></h2>
+                <br>
+                <section class="category" data-category="temperature">
+                    <div class="pair-row">
+                        <label>°C</label><input type="number" data-unit="c">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="f"><label>°F</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>°F</label><input type="number" data-unit="f">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="k"><label>K</label>
+                    </div>
+                </section>
+                <br><br>
+                <h2 id="a">Area <a href="#top">[Back]</a></h2>
+                <br>
+                <section class="category" data-category="area">
+                    <div class="pair-row">
+                        <label>mm²</label><input type="number" data-unit="mm2">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="cm2"><label>cm²</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>cm²</label><input type="number" data-unit="cm2">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="m2"><label>m²</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>m²</label><input type="number" data-unit="m2">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="km2"><label>km²</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>km²</label><input type="number" data-unit="km2">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="in2"><label>in²</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>in²</label><input type="number" data-unit="in2">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="ft2"><label>ft²</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>ft²</label><input type="number" data-unit="ft2">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="yd2"><label>yd²</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>yd²</label><input type="number" data-unit="yd2">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="mi2"><label>mi²</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>mi²</label><input type="number" data-unit="mi2">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="acre"><label>acre</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>acre</label><input type="number" data-unit="acre">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="hectare"><label>ha</label>
+                    </div>
+                </section>
+                <br><br>
+                <h2 id="d">Data <a href="#top">[Back]</a></h2>
+                <br>
+                <section class="category" data-category="data">
+                    <div class="pair-row">
+                        <label>bit</label><input type="number" data-unit="bit">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="B"><label>B</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>B</label><input type="number" data-unit="B">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="KB"><label>KB</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>KB</label><input type="number" data-unit="KB">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="MB"><label>MB</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>MB</label><input type="number" data-unit="MB">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="GB"><label>GB</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>GB</label><input type="number" data-unit="GB">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="TB"><label>TB</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>TB</label><input type="number" data-unit="TB">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="KiB"><label>KiB</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>KiB</label><input type="number" data-unit="KiB">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="MiB"><label>MiB</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>MiB</label><input type="number" data-unit="MiB">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="GiB"><label>GiB</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>GiB</label><input type="number" data-unit="GiB">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="TiB"><label>TiB</label>
+                    </div>
+                </section>
+                <br><br>
+                <h2 id="e">Energy <a href="#top">[Back]</a></h2>
+                <br>
+                <section class="category" data-category="energy">
+                    <div class="pair-row">
+                        <label>J</label><input type="number" data-unit="J">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="kJ"><label>kJ</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>kJ</label><input type="number" data-unit="kJ">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="cal"><label>cal</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>cal</label><input type="number" data-unit="cal">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="kcal"><label>kcal</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>kcal</label><input type="number" data-unit="kcal">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="Wh"><label>Wh</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>Wh</label><input type="number" data-unit="Wh">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="kWh"><label>kWh</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>kWh</label><input type="number" data-unit="kWh">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="eV"><label>eV</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>eV</label><input type="number" data-unit="eV">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="BTU"><label>BTU</label>
+                    </div>
+                </section>
+                <br><br>
+                <h2 id="p">Pressure <a href="#top">[Back]</a></h2>
+                <br>
+                <section class="category" data-category="pressure">
+                    <div class="pair-row">
+                        <label>Pa</label><input type="number" data-unit="Pa">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="kPa"><label>kPa</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>kPa</label><input type="number" data-unit="kPa">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="bar"><label>bar</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>bar</label><input type="number" data-unit="bar">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="atm"><label>atm</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>atm</label><input type="number" data-unit="atm">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="psi"><label>psi</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>psi</label><input type="number" data-unit="psi">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="mmHg"><label>mmHg</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>mmHg</label><input type="number" data-unit="mmHg">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="torr"><label>torr</label>
+                    </div>
+                </section>
+                <br><br>
+                <h2 id="s">Speed <a href="#top">[Back]</a></h2>
+                <br>
+                <section class="category" data-category="speed">
+                    <div class="pair-row">
+                        <label>m/s</label><input type="number" data-unit="mps">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="kmph"><label>km/h</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>km/h</label><input type="number" data-unit="kmph">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="mph"><label>mph</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>mph</label><input type="number" data-unit="mph">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="knot"><label>knot</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>knot</label><input type="number" data-unit="knot">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="ftps"><label>ft/s</label>
+                    </div>
+                </section>
+                <br><br>
+                <h2 id="t">Time <a href="#top">[Back]</a></h2>
+                <br>
+                <section class="category" data-category="time">
+                    <div class="pair-row">
+                        <label>s</label><input type="number" data-unit="s">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="min"><label>min</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>min</label><input type="number" data-unit="min">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="h"><label>h</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>h</label><input type="number" data-unit="h">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="day"><label>day</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>day</label><input type="number" data-unit="day">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="week"><label>week</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>week</label><input type="number" data-unit="week">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="month"><label>month</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>month</label><input type="number" data-unit="month">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="year"><label>year</label>
+                    </div>
+                </section>
+                <br><br>
+                <h2 id="dig">Digital <a href="#top">[Back]</a></h2>
+                <br>
+                <section class="category" data-category="digital">
+                    <p><b>Reference Values</b></p>
+                    <br>
+                    <div class="ref-row">
+                        <label>Root font size (rem)</label><input type="number" data-ref="rem" value="16">
+                    </div>
+                    <br>
+                    <div class="ref-row">
+                        <label>Parent font size (em)</label><input type="number" data-ref="em" value="16">
+                    </div>
+                    <br>
+                    <div class="ref-row">
+                        <label>Viewport width (vw)</label><input type="number" data-ref="vw" value="1920">
+                    </div>
+                    <br>
+                    <div class="ref-row">
+                        <label>Viewport height (vh)</label><input type="number" data-ref="vh" value="1080">
+                    </div>
+                    <br>
+                    <div class="ref-row">
+                        <label>Reference size (%)</label><input type="number" data-ref="pct" value="16">
+                    </div>
+                    <br>
+                    <br>
+                    <div class="pair-row">
+                        <label>px</label><input type="number" data-unit="px">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="em"><label>em</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>em</label><input type="number" data-unit="em">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="rem"><label>rem</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>rem</label><input type="number" data-unit="rem">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="pt"><label>pt</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>pt</label><input type="number" data-unit="pt">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="pc"><label>pc</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>pc</label><input type="number" data-unit="pc">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="in"><label>in</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>in</label><input type="number" data-unit="in">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="cm"><label>cm</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>cm</label><input type="number" data-unit="cm">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="mm"><label>mm</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>mm</label><input type="number" data-unit="mm">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="vw"><label>vw</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>vw</label><input type="number" data-unit="vw">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="vh"><label>vh</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>vh</label><input type="number" data-unit="vh">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="vmin"><label>vmin</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>vmin</label><input type="number" data-unit="vmin">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="vmax"><label>vmax</label>
+                    </div>
+                    <br>
+                    <div class="pair-row">
+                        <label>vmax</label><input type="number" data-unit="vmax">
+                        <span class="arrow">=</span>
+                        <input type="number" data-unit="%"><label>%</label>
+                    </div>
+                </section>
+            </div>
+            <div class="tab-panel" data-tab="tally">
+                <h1>Tally</h1>
+                <br><br>
+                <div class="tally">
+                    <h1 id="count">0</h1>
+                    <br>
+                    <div class="buttons">
+                        <button id="minus">−</button>
+                        <button id="reset">Reset</button>
+                        <button id="plus">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-panel" data-tab="more">
+                <h1>More Options</h1>
+                <br><br>
+                <p>(i) <b>Theme Options</b> -- Here you can control the background color of this Web App.</p>
+                <br>
+                <div class="theme-options">
+                    <button id="defaultTheme">White (Default)</button>
+                    <button id="darkTheme">Dark</button>
+                    <button id="darkestTheme">Darkest</button>
+                </div>
+                <br><br>
+                <p>(i) <b>Data Options</b> -- Here you can control all your data that this Web App creates, collects, and stores.</p>
+                <br>
+                <div class="data-actions">
+                    <button id="downloadBtn">Download Data</button>
+                    <button id="clearDataBtn">Delete All Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/scripts/index.js"></script>
 </body>
 </html>

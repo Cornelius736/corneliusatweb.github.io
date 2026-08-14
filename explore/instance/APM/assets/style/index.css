@@ -1,0 +1,371 @@
+@font-face {
+    font-family: "main";
+    src: url("../fonts/Roboto/Roboto-Regular.ttf");
+}
+
+:root {
+    --main_white: #F2F2F2;
+    --main_black: #222222;
+    --main_main: #D73AE1;
+
+    --square-w: 18.75rem;
+    --square-h: 12.5rem;
+    --track-w: 0.875rem;
+    --thumb-d: 1.125rem;
+    --radius: 0.4375rem;
+    --tile: 0.625rem;
+}
+
+::selection {
+    background: var(--main_black);
+    color: var(--main_white);
+}
+
+li::marker {
+    color: var(--main_main);
+}
+
+::placeholder {
+    color: var(--main_black);
+}
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "main";
+    letter-spacing: 0.1em;
+    scroll-behavior: smooth;
+}
+
+body {
+    background: var(--main_white);
+    color: var(--main_black);
+    min-height: 100vh;    
+    display: flex;
+    flex-direction: column;
+}
+
+body.dark {
+    background: var(--main_black);
+    color: var(--main_white);
+}
+
+body.dark .side {
+    background: #111111;
+}
+
+body.dark input, body.dark ::placeholder, body.darkest input, body.darkest ::placeholder {
+    color: var(--main_white);
+    border-color: var(--main_white);
+}
+
+body.dark ::selection, body.darkest ::selection {
+    background: var(--main_white);
+    color: var(--main_black);
+}
+
+body.darkest {
+    background: #111111;
+    color: var(--main_white);
+}
+
+body.darkest .side {
+    background: #000000;
+}
+
+a {
+    color: var(--main_main);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+a, u {
+    text-underline-offset: 0.2rem;
+}
+
+button {
+    background: var(--main_main);
+    color: var(--main_white);
+    border: none;
+    padding: 0.75rem 1rem;
+    margin: 0.25rem 0 0.25rem 0;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+button:active {
+    background: #8F1496;
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+button .active-hide {
+    display: none;
+}
+
+button a, button a:hover, .footer_bar a, .footer_bar a:hover {
+    color: inherit;
+    text-decoration: none;
+}
+
+input {
+    background: transparent;
+    border: 0.1rem solid var(--main_black);
+    color: var(--main_black);
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    width: 100%;
+    outline: none;
+}
+
+ul, ol {
+    padding-left: 3rem;
+}
+
+img {
+    width: 50%;
+    height: 100%;
+    user-select: none;
+    vertical-align: middle;
+}
+
+.container {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.side {
+    background: var(--main_black);
+    color: var(--main_white);
+    width: 20%;
+    float: left;
+    min-height: 100vh;    
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+}
+
+.side-title {
+    padding: 4rem 0 2rem 4rem;
+}
+
+.side-title h1 {
+    font-size: 3rem;
+}
+
+.side button {
+    background: transparent;
+    width: 100%;
+    padding: 1rem 0 1rem 4rem;
+    margin: 0;
+    border-radius: 0;
+    text-align: left;
+}
+
+.side button:hover, .side button.active, .side button.active:hover {
+    background: #333;
+}
+
+.side button.active .active-hide {
+    display: inline;
+}
+
+.body {
+    padding: 4rem 3rem;
+    margin-left: 20%;
+    width: 80%;
+    float: left;
+}
+
+.card {
+    border: 0.1rem solid var(--main_black);
+    padding: 1rem;
+}
+
+.tab-buttons {
+    display: flex;
+}
+
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.active {
+    display: block;
+    animation: fadeIn 0.25s ease forwards;
+}
+
+.col10 {
+    width: 10%;
+    float: left;
+}
+
+.col90 {
+    width: 90%;
+    float: left;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0;
+}
+
+.checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    flex-shrink: 0;
+    width: 1rem;
+    border: 0.1rem solid var(--main_main);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.15s;
+}
+
+.checkbox:hover {
+    border: 0.1rem solid #8F1496;
+}
+
+.checkbox:checked {
+    background: var(--main_main);
+    border: 0.1rem solid var(--main_main);
+}
+
+.checkbox:checked::after {
+    content: "X";
+    color: var(--main_white);
+    font-size: 1rem;
+    position: absolute;
+    top: 0.2rem;
+    left: 0.7rem;
+}
+
+.picker-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+ 
+.sv-square {
+    position: relative;
+    width: var(--square-w);
+    height: var(--square-h);
+    background:
+        linear-gradient(to right, #fff, transparent),
+        linear-gradient(to top, #000, transparent),
+        hsl(0, 100%, 50%);
+}
+ 
+.sv-cursor {
+    position: absolute;
+    width: 0.375rem;
+    height: 0.375rem;
+    background: #fff;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+ 
+.checkerboard {
+    background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / var(--tile) var(--tile);
+}
+
+.hue-slider,
+.alpha-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: var(--track-w);
+    height: calc(var(--square-h) + var(--thumb-d));
+    margin: calc(var(--thumb-d) / -2) 0;
+    border-radius: var(--radius);
+    outline: none;
+    padding: 0 0.65rem 0 0.4rem;
+}
+
+.hue-slider {
+  background: linear-gradient(to top, red, yellow, lime, cyan, blue, magenta, red);
+}
+
+.hue-slider::-webkit-slider-thumb,
+.alpha-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: var(--thumb-d);
+    height: var(--thumb-d);
+    border-radius: 50%;
+    background: #fff;
+    border: 0.125rem solid #666;
+    cursor: pointer;
+}
+
+.hue-slider::-moz-range-thumb,
+.alpha-slider::-moz-range-thumb {
+    width: var(--thumb-d);
+    height: var(--thumb-d);
+    border-radius: 50%;
+    background: #fff;
+    border: 0.125rem solid #666;
+    cursor: pointer;
+}
+
+.hue-slider::-webkit-slider-runnable-track,
+.alpha-slider::-webkit-slider-runnable-track {
+    width: var(--track-w);
+    border-radius: var(--radius);
+}
+
+.swatch {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.swatch-fill {
+    width: 100%;
+    height: 100%;
+}
+
+.four-input-flex input {
+    width: 10%;
+}
+
+.pair-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.pair-row input {
+    width: 25%;
+}
+
+.pair-row label, .pair-row .arrow {
+    margin-top: 0.7rem;
+}
+
+.icon {
+    width: 2em;
+}
+
+#count {
+    font-size: 5rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
