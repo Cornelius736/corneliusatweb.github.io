@@ -55,6 +55,10 @@ body.dark .side {
     background: #111111;
 }
 
+body.dark .card {
+    border: 0.1rem solid #111111;
+}
+
 body.dark input, body.dark ::placeholder, body.darkest input, body.darkest ::placeholder {
     color: var(--main_white);
     border-color: var(--main_white);
