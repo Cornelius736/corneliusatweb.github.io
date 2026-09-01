@@ -36,14 +36,16 @@
                     <ul>
                         <li>All data (such as save files) are saved in your local browser's cache.</li>
                         <li>Internet access is required unless powered locally.</li>
-                        <li>Version: 2.0-A.1</li>
+                        <li>Version: 2.1-A</li>
                     </ul>
                     <br>
-                    <p>&copy; 2026-Present | Made by <a href="https://corneliusatweb.com/" target="_blank">Cornelius</a> with minor development assistance from AI (<a href="https://claude.ai/" target="_blank">https://claude.ai/</a>).</p>
+                    <p>&copy; 2026-Present | Made by <a href="https://corneliusatweb.com/" target="_blank">Cornelius</a> with some (primarily JS) development assistance from AI (<a href="https://claude.ai/" target="_blank">https://claude.ai/</a>).</p>
                 </div>
                 <br><br>
                 <h2>Change Log</h2>
                 <br><br>
+                <p>V-2.1-A (01/Sep/2026): A.P.M is officially compatible with mobile devices henceforth.</p>
+                <br>
                 <p>V-2.0-A.1 (23/Aug/2026): Fixed an issue where the above card's borders would become invisible in the 'Dark' theme.</p>
                 <br>
                 <p>V-2.0-A (14/Aug/2026): Initial release of the 2.0 Web App. Ported from the desktop app.</p>
@@ -51,14 +53,14 @@
             <div class="tab-panel" data-tab="check">
                 <h1>Checklist</h1>
                 <br><br>
-                <p>(i) Use the below input to type in your entry, such as a to-do task, and then press the "Add" button to add your entry to the below list. From there you can mark individual entries as completed and delete them at your discretion.</p>
+                <p>(i) Use the below input to type in your entry, such as a to-do task, and then press the "+" button (or, if on keyboard, you can also press the [ENTER] key) to add your entry to the below list. From there you can mark individual entries as completed and delete them at your discretion.</p>
                 <br><br>
                 <div class="col-wrapper row">
                     <div class="col90">
                         <input type="text" placeholder="Entry..." id="itemInput" style="border: 0.1rem solid var(--main_main); height: 3rem; border-top-right-radius: 0; border-bottom-right-radius: 0;">
                     </div>
                     <div class="col10">
-                        <button id="addBtn" style="margin: 0; height: 3rem; border-top-left-radius: 0; border-bottom-left-radius: 0;">+ Add</button>
+                        <button id="addBtn" style="margin: 0; height: 3rem; border-top-left-radius: 0; border-bottom-left-radius: 0;">+</button>
                     </div>
                 </div>
                 <br><br><br><br>
@@ -747,7 +749,7 @@
                 <p>(i) <b>Theme Options</b> -- Here you can control the background color of this Web App.</p>
                 <br>
                 <div class="theme-options">
-                    <button id="defaultTheme">White (Default)</button>
+                    <button id="defaultTheme">White</button>
                     <button id="darkTheme">Dark</button>
                     <button id="darkestTheme">Darkest</button>
                 </div>

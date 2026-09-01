@@ -56,7 +56,7 @@ body.dark .side {
 }
 
 body.dark .card {
-    border: 0.1rem solid #111111;
+    border-color: var(--main_white);
 }
 
 body.dark input, body.dark ::placeholder, body.darkest input, body.darkest ::placeholder {
@@ -112,6 +112,7 @@ button:disabled {
 }
 
 button .active-hide {
+    margin: 0 0 0 0.25rem;
     display: none;
 }
 
@@ -136,7 +137,7 @@ ul, ol {
 
 img {
     width: 50%;
-    height: 100%;
+    height: auto;
     user-select: none;
     vertical-align: middle;
 }
@@ -156,6 +157,7 @@ img {
     display: flex;
     flex-direction: column;
     position: fixed;
+    z-index: 99999;
 }
 
 .side-title {
@@ -359,6 +361,7 @@ img {
 
 .icon {
     width: 2em;
+    margin: 0 0.5rem 0 0;
 }
 
 #count {
@@ -371,5 +374,53 @@ img {
     }
     to {
         opacity: 1;
+    }
+}
+
+@media screen and (max-width: 70.3125rem) {
+    button {
+        font-size: 1rem;
+    }
+    .container {
+        display: block;
+    }
+    .side {
+        width: 100%;
+        padding: 5rem 0 0 0;
+        float: unset;
+        min-height: auto;
+        display: flex;
+        flex-direction: row;
+        position: fixed;
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-wrap: nowrap;
+    }
+    .side .side-title {
+        position: fixed;
+        top: 0;
+        left: 0;
+        padding: 1rem 0 0 0;
+        flex: 0 0 auto;
+        transform: translateX(90%);
+    }
+    .side button {
+        font-size: 0.75rem;
+        width: auto;
+        padding: 1rem;
+        display: flex;
+        white-space: nowrap;
+        align-items: center;
+    }
+    .side button .icon {
+        width: 2.5em;
+        height: 2.5em;
+        flex-shrink: 0;
+    }
+    .body {
+        width: 100%;
+        float: unset;
+        padding: 12rem 2rem 3rem;
+        margin-left: 0%;
     }
 }
