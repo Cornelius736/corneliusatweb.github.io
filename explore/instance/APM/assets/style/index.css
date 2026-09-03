@@ -55,7 +55,7 @@ body.dark .side {
     background: #111111;
 }
 
-body.dark .card {
+body.dark .card, body.darkest .card {
     border-color: var(--main_white);
 }
 
@@ -332,6 +332,14 @@ img {
     border-radius: var(--radius);
 }
 
+input.hex-output {
+    width: 15%;
+}
+
+input.fltr-output {
+    width: 80%;
+}
+
 .swatch {
     width: 2.5rem;
     height: 2.5rem;
@@ -357,6 +365,12 @@ img {
 
 .pair-row label, .pair-row .arrow {
     margin-top: 0.7rem;
+}
+
+.ref-row input {
+    width: 15%;
+    display: block;
+    margin-top: 0.5rem;
 }
 
 .icon {
@@ -422,5 +436,23 @@ img {
         float: unset;
         padding: 12rem 2rem 3rem;
         margin-left: 0%;
+    }
+    input.hex-output {
+        width: 65%;
+    }
+    input.clr-output {
+        width: 18%;
+    }
+    input.fltr-output {
+        width: 60%;
+    }
+    .pair-row input {
+        width: 40%;
+    }
+    .ref-row input {
+        width: 75%;
+    }
+    .tally-panel {
+        text-align: center;
     }
 }
