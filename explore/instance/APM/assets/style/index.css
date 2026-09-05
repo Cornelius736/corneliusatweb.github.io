@@ -441,7 +441,8 @@ input.fltr-output {
         width: 65%;
     }
     input.clr-output {
-        width: 18%;
+        width: 100%;
+        margin: 0.5rem 0;
     }
     input.fltr-output {
         width: 60%;
