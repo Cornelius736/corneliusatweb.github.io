@@ -337,7 +337,7 @@ input.hex-output {
 }
 
 input.fltr-output {
-    width: 80%;
+    width: 70%;
 }
 
 .swatch {
@@ -437,15 +437,15 @@ input.fltr-output {
         padding: 12rem 2rem 3rem;
         margin-left: 0%;
     }
+    .picker-row {
+        text-align: center;
+    }
     input.hex-output {
         width: 65%;
     }
-    input.clr-output {
+    input.clr-output, input.fltr-output {
         width: 100%;
         margin: 0.5rem 0;
-    }
-    input.fltr-output {
-        width: 60%;
     }
     .pair-row input {
         width: 40%;
