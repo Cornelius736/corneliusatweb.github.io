@@ -77,12 +77,21 @@ ul, ol {
 }
 
 .navigation_bar a {
-    margin: 0 1rem;
+    margin: 0 0.25rem;
     font-weight: bold;
+    text-decoration: none;
+    padding: 0.75rem 1rem;
+    border-radius: 5rem;
+    border-bottom: 0.3rem solid var(--main_white);
+    border-right: 0.3rem solid var(--main_white);
+    transition: 0.15s;
 }
 
-.navigation_bar a.active, .navigation_bar a.active:hover {
-    text-decoration: underline;
+.navigation_bar a:hover {
+    background: var(--main_main);
+    border-bottom: 0.3rem solid var(--main_special);
+    border-right: 0.3rem solid var(--main_special);
+    color: var(--main_white);
 }
 
 .body_bar {
