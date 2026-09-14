@@ -170,6 +170,9 @@ ul, ol {
     .r {
         display: block;
     }
+    .navigation_bar p {
+        margin: 0.5rem 0;
+    }
     .body_bar {
         width: 90%;
     }
