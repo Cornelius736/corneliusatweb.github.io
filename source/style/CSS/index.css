@@ -25,6 +25,7 @@ li::marker {
     box-sizing: border-box;
     font-family: "main";
     letter-spacing: 0.1em;
+    scroll-behavior: smooth;
 }
 
 body {
@@ -58,7 +59,7 @@ button {
     cursor: pointer;
 }
 
-button a, button a:hover, .footer_bar a, .footer_bar a:hover {
+button a, button a:hover, .project_media_img_container a, .project_media_img_container a:hover, .footer_bar a, .footer_bar a:hover {
     background: transparent;
     color: inherit;
     text-decoration: none;
@@ -172,6 +173,14 @@ ul, ol {
     display: none;
 }
 
+.project_media_img_container {
+    text-align: center;
+}
+
+.project_media_img {
+    width: 18%;
+}
+
 @media screen and (max-width: 37.5rem) {
     .n {
         display: none;
@@ -184,6 +193,10 @@ ul, ol {
     }
     .body_bar {
         width: 90%;
+    }
+    .project_media_img {
+        width: 100%;
+        margin: 0.5rem 0;
     }
     .footer_bar {
         text-align: center;
