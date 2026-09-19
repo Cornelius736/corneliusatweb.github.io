@@ -15,10 +15,12 @@
             </div>
             <button class="tab-btn" data-tab="home"><img src="assets/icons/home-icon.svg" alt="home" class="icon"> Home <span class="active-hide">>></span></button>
             <button class="tab-btn" data-tab="check"><img src="assets/icons/checklist-icon.svg" alt="check" class="icon"> Checklist <span class="active-hide">>></span></button>
-            <button class="tab-btn" data-tab="notepad"><img src="assets/icons/notepad-icon.svg" alt="check" class="icon"> Notepad <span class="active-hide">>></span></button>
+            <button class="tab-btn" data-tab="notepad"><img src="assets/icons/notepad-icon.svg" alt="notepad" class="icon"> Notepad <span class="active-hide">>></span></button>
             <button class="tab-btn" data-tab="color"><img src="assets/icons/color-picker-icon.svg" alt="color" class="icon"> Color Picker <span class="active-hide">>></span></button>
             <button class="tab-btn" data-tab="converters"><img src="assets/icons/converters-icon.svg" alt="converters" class="icon"> Converters <span class="active-hide">>></span></button>
             <button class="tab-btn" data-tab="tally"><img src="assets/icons/tally-icon.svg" alt="tally" class="icon"> Tally <span class="active-hide">>></span></button>
+            <button class="tab-btn" data-tab="encryptor"><img src="assets/icons/encryptor-icon.svg" alt="encryptor" class="icon"> Encryptor <span class="active-hide">>></span></button>
+            <button class="tab-btn" data-tab="decryptor"><img src="assets/icons/decryptor-icon.svg" alt="decryptor" class="icon"> Decryptor <span class="active-hide">>></span></button>
             <button class="tab-btn" data-tab="more"><img src="assets/icons/more-options-icon.svg" alt="more" class="icon"> More Options <span class="active-hide">>></span></button>
         </div>
         <div class="body tab-panels">
@@ -35,7 +37,7 @@
                     <ul>
                         <li>All data (such as save files) are saved in your local browser's cache.</li>
                         <li>Internet access is required unless powered locally.</li>
-                        <li>Version: 2.2-A</li>
+                        <li>Version: 2.3-A</li>
                     </ul>
                     <br>
                     <p>&copy; 2026-Present | Made by <a href="https://corneliusatweb.com/" target="_blank">Cornelius</a> with some (primarily JS) development assistance from AI (<a href="https://claude.ai/" target="_blank">https://claude.ai/</a>).</p>
@@ -43,6 +45,8 @@
                 <br><br>
                 <h2>Change Log</h2>
                 <br><br>
+                <p>V-2.3-A (19/Sep/2026): Added 2 new tools (Encryptor and Decryptor). Both use an extremely secure and custom encryption system that is probably impossible to crack without a set of Keys, and even then it's impossible to know what the correct data is without knowing which is the correct Key. Security testing is still underway, though.</p>
+                <br>
                 <p>V-2.2-A (19/Sep/2026): Added a new tool (Notepad), fixed a canvas-related issue in the Color Picker, improved the Converter tool to feel less clunky, the Tally tool now saves its data, added several new data management options (including a feature to Upload data, ensuring easy data transfers), and some visual and textual elements were revamped.</p>
                 <br>
                 <p>V-2.1-B.2 (08/Sep/2026): Slight adjustments to the mobile styling.</p>
@@ -180,6 +184,57 @@
                         <button id="plus">+</button>
                     </div>
                 </div>
+            </div>
+            <div class="tab-panel" data-tab="encryptor">
+                <h1>Encryptor</h1>
+                <br><br>
+                <p>(i) Enter your real message in the "Real Message" field. Then, enter 4 similar, but fake, ones in the "Fake Message" fields. After that, press "Encrypt." This will generate an encrypted version of your message, and it will also download (with permission) 5 Keys, only one of which is the correct Key. You can copy the text from the "Encrypted Message" field and move to the Decryptor.</p>
+                <br><br>
+                <label for="encReal">Real Message:</label>
+                <br><br>
+                <input type="text" id="encReal" maxlength="1000" autocomplete="off">
+                <br><br>
+                <label for="encFake1">Fake Message 1:</label>
+                <br><br>
+                <input type="text" id="encFake1" maxlength="1000" autocomplete="off">
+                <br><br>
+                <label for="encFake2">Fake Message 2:</label>
+                <br><br>
+                <input type="text" id="encFake2" maxlength="1000" autocomplete="off">
+                <br><br>
+                <label for="encFake3">Fake Message 3:</label>
+                <br><br>
+                <input type="text" id="encFake3" maxlength="1000" autocomplete="off">
+                <br><br>
+                <label for="encFake4">Fake Message 4:</label>
+                <br><br>
+                <input type="text" id="encFake4" maxlength="1000" autocomplete="off">
+                <br><br>
+                <button id="encryptBtn" disabled>Encrypt</button>
+                <br><br>
+                <label for="encOutput">Encrypted Message:</label>
+                <br><br>
+                <textarea id="encOutput" readonly spellcheck="false" style="min-height: 10rem;"></textarea>
+                <br><br>
+                <p id="encKeyNote"></p>
+            </div>
+            <div class="tab-panel" data-tab="decryptor">
+                <h1>Decryptor</h1>
+                <br><br>
+                <p>(i) You can paste your encrypted message in the "Encrypted Message" field below. Before decrypting, however, you will need to also upload one of the Keys you acquired earlier. Depending on which Key you upload, the decrypted result will be different. Since only one Key is correct, only one result is correct too. When both requirements are met, press "Decrypt."</p>
+                <br><br>
+                <button id="decKeyBtn">Upload Key</button>
+                <span id="decKeyStatus" class="note-status">No key uploaded.</span>
+                <br><br>
+                <label for="decInput">Encrypted Message:</label>
+                <br><br>
+                <textarea id="decInput" spellcheck="false" style="min-height: 10rem;"></textarea>
+                <br><br>
+                <button id="decryptBtn" disabled>Decrypt</button>
+                <br><br>
+                <label for="decOutput">Decrypted Message:</label>
+                <br><br>
+                <textarea id="decOutput" readonly spellcheck="false" style="min-height: 10rem;"></textarea>
             </div>
             <div class="tab-panel" data-tab="more">
                 <h1>More Options</h1>

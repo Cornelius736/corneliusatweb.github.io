@@ -1102,3 +1102,283 @@ document.getElementById('dark2Theme').onclick = () => setTheme('dark2');
 
 const savedTheme = localStorage.getItem(STORAGE_KEYS.theme);
 setTheme(savedTheme === 'darkest' ? 'dark2' : savedTheme || 'default');
+
+// Encryptor / Decryptor
+
+(function () {
+  const SYM_START = 33;   // "!"
+  const SYM_BASE = 94;    // "!" through "~" (no spaces)
+  const SEED_LEN = 32;
+
+  // Randomness
+
+  function randBytes(n) {
+    const a = new Uint8Array(n);
+    crypto.getRandomValues(a);
+    return a;
+  }
+
+  function randInt(n) {
+    const a = new Uint32Array(1);
+    const limit = Math.floor(4294967296 / n) * n;
+    do { crypto.getRandomValues(a); } while (a[0] >= limit);
+    return a[0] % n;
+  }
+
+  function shuffleInPlace(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = randInt(i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  const ROUNDS = 8;
+
+  function rotl32(v, k) {
+    return ((v << k) | (v >>> (32 - k))) >>> 0;
+  }
+
+  function chachaBlock(inp) {
+    const x = Uint32Array.from(inp);
+    const qr = (a, b, c, d) => {
+      x[a] = x[a] + x[b]; x[d] = rotl32(x[d] ^ x[a], 16);
+      x[c] = x[c] + x[d]; x[b] = rotl32(x[b] ^ x[c], 12);
+      x[a] = x[a] + x[b]; x[d] = rotl32(x[d] ^ x[a], 8);
+      x[c] = x[c] + x[d]; x[b] = rotl32(x[b] ^ x[c], 7);
+    };
+    for (let i = 0; i < 10; i++) {
+      qr(0, 4, 8, 12); qr(1, 5, 9, 13); qr(2, 6, 10, 14); qr(3, 7, 11, 15);
+      qr(0, 5, 10, 15); qr(1, 6, 11, 12); qr(2, 7, 8, 13); qr(3, 4, 9, 14);
+    }
+    for (let i = 0; i < 16; i++) x[i] = x[i] + inp[i];
+    return x;
+  }
+
+  // Hashes `data` down and stretches it back out to `outLen` bytes.
+  function roundFn(keyWords, round, data, outLen) {
+    const st = new Uint32Array(16);
+    st.set([0x61707865, 0x3320646e, 0x79622d32, 0x6b206574, round + 1, data.length, outLen, 0]);
+    st.set(keyWords, 8);
+
+    const block = new Uint8Array(32);
+    const blockView = new DataView(block.buffer);
+    for (let i = 0; i < data.length; i += 32) {
+      block.fill(0);
+      block.set(data.subarray(i, Math.min(i + 32, data.length)));
+      for (let j = 0; j < 8; j++) st[j] ^= blockView.getUint32(j * 4, true);
+      st.set(chachaBlock(st));
+    }
+
+    const out = new Uint8Array(outLen);
+    const tmp = new Uint32Array(16);
+    const buf = new Uint8Array(64);
+    const bufView = new DataView(buf.buffer);
+    for (let off = 0, ctr = 1; off < outLen; off += 64, ctr++) {
+      tmp.set(st);
+      tmp[12] ^= ctr;
+      const blk = chachaBlock(tmp);
+      for (let j = 0; j < 16; j++) bufView.setUint32(j * 4, blk[j], true);
+      out.set(buf.subarray(0, Math.min(64, outLen - off)), off);
+    }
+    return out;
+  }
+
+  function wideCipher(seed, input, inverse) {
+    const seedView = new DataView(seed.buffer, seed.byteOffset, SEED_LEN);
+    const keyWords = new Uint32Array(8);
+    for (let i = 0; i < 8; i++) keyWords[i] = seedView.getUint32(i * 4, true);
+
+    const h = input.length >> 1;
+    const left = input.slice(0, h);
+    const right = input.slice(h);
+    const order = [];
+    for (let r = 0; r < ROUNDS; r++) order.push(r);
+    if (inverse) order.reverse();
+
+    for (const r of order) {
+      const [target, source] = r % 2 === 0 ? [left, right] : [right, left];
+      const f = roundFn(keyWords, r, source, target.length);
+      for (let i = 0; i < target.length; i++) target[i] ^= f[i];
+    }
+
+    const out = new Uint8Array(input.length);
+    out.set(left);
+    out.set(right, h);
+    return out;
+  }
+
+  // Bytes <-> symbols (base 94, 3 bytes become 4 symbols)
+
+  function toSymbols(bytes) {
+    let out = '';
+    for (let i = 0; i < bytes.length; i += 3) {
+      const r = Math.min(3, bytes.length - i);
+      let v = 0;
+      for (let j = 0; j < r; j++) v = v * 256 + bytes[i + j];
+      let chunk = '';
+      for (let d = 0; d <= r; d++) {
+        chunk = String.fromCharCode(SYM_START + (v % SYM_BASE)) + chunk;
+        v = Math.floor(v / SYM_BASE);
+      }
+      out += chunk;
+    }
+    return out;
+  }
+
+  function fromSymbols(text) {
+    const str = text.replace(/\s+/g, '');
+    const out = [];
+    for (let i = 0; i < str.length; i += 4) {
+      const s = Math.min(4, str.length - i);
+      if (s < 2) break;
+      let v = 0;
+      for (let j = 0; j < s; j++) {
+        const d = (((str.charCodeAt(i + j) - SYM_START) % SYM_BASE) + SYM_BASE) % SYM_BASE;
+        v = v * SYM_BASE + d;
+      }
+      const r = s - 1;
+      v = v % Math.pow(256, r);
+      const chunk = [];
+      for (let j = 0; j < r; j++) { chunk.unshift(v % 256); v = Math.floor(v / 256); }
+      out.push(...chunk);
+    }
+    return Uint8Array.from(out);
+  }
+
+  // Core
+
+  // The buffer is sized so that the random filler hidden in the messages outweighs everything
+  // the key files could be compared on (so they can't be used against each other), and it gets
+  // a large random extra on top so its size says almost nothing about the message length.
+  const MIN_BUFFER = 1024;
+  const MAX_EXTRA = 1024;
+  const SLACK = 32;
+
+  function encrypt(messages) {
+    const enc = new TextEncoder();
+    const bytes = messages.map(m => enc.encode(m));
+    const longest = Math.max(...bytes.map(b => b.length));
+
+    const n = Math.max(MIN_BUFFER, messages.length * (longest + 2) + SLACK) + randInt(MAX_EXTRA + 1);
+    const cipher = randBytes(n);
+
+    const keys = bytes.map((msg, index) => {
+      const plain = randBytes(n);
+      plain[0] = msg.length >> 8;
+      plain[1] = msg.length & 255;
+      plain.set(msg, 2);
+
+      const seed = randBytes(SEED_LEN);
+      const y = wideCipher(seed, plain, false);
+
+      const key = new Uint8Array(SEED_LEN + n);
+      key.set(seed);
+      for (let k = 0; k < n; k++) key[SEED_LEN + k] = cipher[k] ^ y[k];
+      return { text: toSymbols(key), real: index === 0 };
+    });
+
+    return { cipher: toSymbols(cipher), keys: shuffleInPlace(keys) };
+  }
+
+  function decrypt(keyText, cipherText) {
+    const kb = fromSymbols(keyText);
+    const cb = fromSymbols(cipherText);
+    const n = kb.length - SEED_LEN;
+    if (n < 2) return '';
+
+    const y = new Uint8Array(n);
+    for (let k = 0; k < n; k++) y[k] = (cb[k] || 0) ^ kb[SEED_LEN + k];
+
+    const plain = wideCipher(kb.slice(0, SEED_LEN), y, true);
+    const len = Math.min((plain[0] << 8) | plain[1], n - 2);
+    return new TextDecoder().decode(plain.subarray(2, 2 + len));
+  }
+
+  // Random sentence file names
+
+  const WORDS = {
+    name: ['timothy', 'sarah', 'john', 'maria', 'oscar', 'lena', 'victor', 'nina', 'felix', 'clara', 'henry', 'ivy', 'marcus', 'elena', 'paul', 'rosa', 'daniel', 'alice', 'george', 'helen', 'bruno', 'tina', 'leo', 'vera', 'sam', 'joan', 'ethan', 'molly', 'arthur', 'zoe'],
+    verb: ['wrote', 'found', 'lost', 'painted', 'borrowed', 'fixed', 'forgot', 'bought', 'sold', 'built', 'baked', 'opened', 'moved', 'cleaned', 'ordered', 'carried', 'sent', 'kept', 'finished', 'ruined'],
+    noun: ['book', 'letter', 'bike', 'lamp', 'recipe', 'ticket', 'clock', 'map', 'photo', 'song', 'chair', 'sandwich', 'umbrella', 'jacket', 'puzzle', 'guitar', 'garden', 'poster', 'bottle', 'notebook'],
+    plural: ['hills', 'clouds', 'birds', 'roads', 'lights', 'fields', 'doors', 'boats', 'trees', 'stars', 'rivers', 'windows', 'shops', 'walls', 'stones', 'streets'],
+    adj: ['green', 'quiet', 'cold', 'old', 'bright', 'empty', 'heavy', 'wet', 'wide', 'soft', 'loud', 'dark', 'tall', 'slow', 'sharp', 'warm'],
+    place: ['home', 'school', 'work', 'the_park', 'the_station', 'the_market', 'the_beach', 'the_office', 'the_library', 'the_shop', 'the_cafe', 'the_garage'],
+    day: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'tomorrow', 'tonight']
+  };
+
+  const TEMPLATES = [
+    w => `${w('name')}_${w('verb')}_a_${w('noun')}`,
+    w => `the_${w('plural')}_are_${w('adj')}`,
+    w => `tomorrow_is_${w('name')}_s_bday`,
+    w => `${w('name')}_${w('verb')}_the_${w('noun')}_at_${w('place')}`,
+    w => `we_met_${w('name')}_at_${w('place')}`,
+    w => `the_${w('noun')}_is_${w('adj')}`,
+    w => `${w('name')}_and_${w('name')}_${w('verb')}_the_${w('noun')}`,
+    w => `don_t_forget_the_${w('noun')}`,
+    w => `${w('name')}_s_${w('noun')}_is_${w('adj')}`,
+    w => `call_${w('name')}_on_${w('day')}`,
+    w => `${w('adj')}_${w('plural')}_on_${w('day')}`,
+    w => `meet_at_${w('place')}_on_${w('day')}`
+  ];
+
+  function randomFileNames(count) {
+    const pick = kind => WORDS[kind][randInt(WORDS[kind].length)];
+    const names = new Set();
+    while (names.size < count) {
+      names.add(TEMPLATES[randInt(TEMPLATES.length)](pick) + '.txt');
+    }
+    return [...names];
+  }
+
+  // Encryptor panel
+
+  const encFields = ['encReal', 'encFake1', 'encFake2', 'encFake3', 'encFake4'].map(id => document.getElementById(id));
+  const encryptBtn = document.getElementById('encryptBtn');
+  const encOutput = document.getElementById('encOutput');
+  const encKeyNote = document.getElementById('encKeyNote');
+
+  function updateEncryptBtn() {
+    encryptBtn.disabled = !encFields.every(f => f.value.trim());
+  }
+
+  encFields.forEach(f => f.addEventListener('input', updateEncryptBtn));
+
+  encryptBtn.addEventListener('click', () => {
+    const { cipher, keys } = encrypt(encFields.map(f => f.value));
+    const names = randomFileNames(keys.length);
+
+    encOutput.value = cipher;
+    encKeyNote.textContent = '(i) The correct key is: ' + names[keys.findIndex(k => k.real)];
+
+    keys.forEach((k, i) => {
+      setTimeout(() => downloadFile(k.text, names[i], 'text/plain'), i * 400);
+    });
+  });
+
+  // Decryptor panel
+
+  const decKeyBtn = document.getElementById('decKeyBtn');
+  const decKeyStatus = document.getElementById('decKeyStatus');
+  const decInput = document.getElementById('decInput');
+  const decryptBtn = document.getElementById('decryptBtn');
+  const decOutput = document.getElementById('decOutput');
+
+  let uploadedKey = null;
+
+  function updateDecryptBtn() {
+    decryptBtn.disabled = !(uploadedKey && decInput.value.trim());
+  }
+
+  decKeyBtn.addEventListener('click', () => pickFiles('.txt,text/plain', false, async ([file]) => {
+    uploadedKey = await file.text();
+    decKeyStatus.textContent = file.name;
+    updateDecryptBtn();
+  }));
+
+  decInput.addEventListener('input', updateDecryptBtn);
+
+  decryptBtn.addEventListener('click', () => {
+    decOutput.value = decrypt(uploadedKey, decInput.value);
+  });
+})();
