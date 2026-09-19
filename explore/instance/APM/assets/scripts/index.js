@@ -15,11 +15,75 @@ function initTabs(container, defaultTab) {
  
 document.querySelectorAll('.tabs-wrapper').forEach(el => initTabs(el));
 
+// Storage
+
+const STORAGE_KEYS = {
+  checklist: 'checklist-items',
+  notepad: 'notepad-documents',
+  tally: 'tally-count',
+  theme: 'theme'
+};
+
+const store = {
+  load(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (err) {
+      return fallback;
+    }
+  },
+  save(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  },
+  remove(key) {
+    localStorage.removeItem(key);
+  }
+};
+
+function downloadFile(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadJson(data, filename) {
+  downloadFile(JSON.stringify(data, null, 2), filename, 'application/json');
+}
+
+// Opens a file picker and hands the chosen files to onFiles.
+function pickFiles(accept, multiple, onFiles) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = accept;
+  input.multiple = multiple;
+  input.addEventListener('change', () => {
+    if (input.files.length) onFiles([...input.files]);
+  });
+  input.click();
+}
+
+// Opens a file picker for a .json file and hands the parsed contents to onData.
+function uploadJson(onData) {
+  pickFiles('.json,application/json', false, async ([file]) => {
+    let data;
+    try {
+      data = JSON.parse(await file.text());
+    } catch (err) {
+      alert("That file couldn't be read as JSON.");
+      return;
+    }
+    onData(data);
+  });
+}
+
 // Checklist
 
-const STORAGE_KEY = 'checklist-items';
-
-let items = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let items = store.load(STORAGE_KEYS.checklist, []);
 
 const listEl = document.getElementById('list');
 const inputEl = document.getElementById('itemInput');
@@ -27,11 +91,12 @@ const addBtn = document.getElementById('addBtn');
 const selectAllBtn = document.getElementById('selectAllBtn');
 const deselectAllBtn = document.getElementById('deselectAllBtn');
 const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const clearDataBtn = document.getElementById('clearDataBtn');
+const downloadBtn = document.getElementById('checklistDownloadBtn');
+const uploadBtn = document.getElementById('checklistUploadBtn');
+const clearDataBtn = document.getElementById('checklistClearBtn');
 
 function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  store.save(STORAGE_KEYS.checklist, items);
 }
 
 function render() {
@@ -99,24 +164,317 @@ deleteSelectedBtn.addEventListener('click', () => {
   render();
 });
 
-downloadBtn.addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'checklist-data.json';
-  a.click();
-  URL.revokeObjectURL(url);
-});
+downloadBtn.addEventListener('click', () => downloadJson(items, 'checklist-data.json'));
 
 clearDataBtn.addEventListener('click', () => {
-  if (!confirm('This will delete all cached data from this domain. Continue?')) return;
-  localStorage.clear();
+  if (!confirm('This will delete all of your Checklist data. Continue?')) return;
+  store.remove(STORAGE_KEYS.checklist);
   items = [];
   render();
 });
 
+// Merge: uploaded entries the list already has are skipped (matched one-to-one by text)
+function cleanChecklist(data) {
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter(i => i && typeof i.text === 'string' && i.text.trim())
+    .map(i => ({ text: i.text.trim(), checked: i.checked === true }));
+}
+
+function mergeChecklist(existing, incoming) {
+  const merged = existing.slice();
+  const unmatched = new Map();
+  existing.forEach(i => unmatched.set(i.text, (unmatched.get(i.text) || 0) + 1));
+
+  let added = 0;
+  incoming.forEach(i => {
+    const left = unmatched.get(i.text) || 0;
+    if (left > 0) {
+      unmatched.set(i.text, left - 1);
+    } else {
+      merged.push(i);
+      added++;
+    }
+  });
+  return { merged, added };
+}
+
+uploadBtn.addEventListener('click', () => uploadJson(data => {
+  const incoming = cleanChecklist(data);
+  if (incoming.length === 0) {
+    alert("That file doesn't contain any Checklist entries.");
+    return;
+  }
+  const { merged, added } = mergeChecklist(items, incoming);
+  items = merged;
+  save();
+  render();
+  alert(`Checklist: ${added} added, ${incoming.length - added} already in your list.`);
+}));
+
 render();
+
+// Notepad
+
+const notepadEls = {
+  listView: document.getElementById('notepadListView'),
+  editorView: document.getElementById('notepadEditorView'),
+  list: document.getElementById('notepadList'),
+  input: document.getElementById('notepadInput'),
+  addBtn: document.getElementById('notepadAddBtn'),
+  editor: document.getElementById('notepadEditor'),
+  title: document.getElementById('notepadEditorTitle'),
+  status: document.getElementById('notepadStatus'),
+  back: document.getElementById('notepadBackLink')
+};
+
+let notepadDocs = (() => {
+  const saved = store.load(STORAGE_KEYS.notepad, []);
+  if (!Array.isArray(saved)) return [];
+  return saved
+    .filter(d => d && typeof d.title === 'string')
+    .map(d => ({ title: d.title, content: typeof d.content === 'string' ? d.content : '' }));
+})();
+
+let openDocTitle = null;
+let editorDirty = false;
+let saveTimer = null;
+let maxWaitTimer = null;
+
+function saveNotepad() {
+  try {
+    store.save(STORAGE_KEYS.notepad, notepadDocs);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Autosave
+
+function flushEditor() {
+  clearTimeout(saveTimer);
+  clearTimeout(maxWaitTimer);
+  saveTimer = maxWaitTimer = null;
+  if (!editorDirty || openDocTitle === null) return;
+
+  const doc = notepadDocs.find(d => d.title === openDocTitle);
+  if (!doc) return;
+  doc.content = notepadEls.editor.value;
+
+  if (saveNotepad()) {
+    editorDirty = false;
+    notepadEls.status.textContent = 'Saved';
+  } else {
+    notepadEls.status.textContent = 'Could not save (browser storage may be full)';
+  }
+}
+
+function scheduleSave() {
+  editorDirty = true;
+  notepadEls.status.textContent = 'Saving...';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushEditor, 600);
+  if (!maxWaitTimer) maxWaitTimer = setTimeout(flushEditor, 5000);
+}
+
+function showNotepadView(editing) {
+  notepadEls.listView.hidden = editing;
+  notepadEls.editorView.hidden = !editing;
+}
+
+function openEditor(title) {
+  const doc = notepadDocs.find(d => d.title === title);
+  if (!doc) return;
+  openDocTitle = title;
+  editorDirty = false;
+  notepadEls.title.textContent = title;
+  notepadEls.editor.value = doc.content;
+  notepadEls.status.textContent = 'Saved';
+  showNotepadView(true);
+  notepadEls.editor.focus();
+  notepadEls.editor.setSelectionRange(doc.content.length, doc.content.length);
+}
+
+function closeEditor() {
+  flushEditor();
+  openDocTitle = null;
+  showNotepadView(false);
+  renderNotepad();
+}
+
+function renderNotepad() {
+  notepadEls.list.innerHTML = '';
+  if (notepadDocs.length === 0) {
+    const empty = document.createElement('p');
+    empty.textContent = 'No documents yet.';
+    empty.style.opacity = '0.6';
+    notepadEls.list.appendChild(empty);
+    return;
+  }
+
+  notepadDocs.forEach(doc => {
+    const row = document.createElement('div');
+    row.className = 'item doc-item';
+
+    const link = document.createElement('a');
+    link.href = '#';
+    link.textContent = doc.title;
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      openEditor(doc.title);
+    });
+
+    const dl = document.createElement('button');
+    dl.className = 'link-btn';
+    dl.textContent = '[Download]';
+    dl.addEventListener('click', () => {
+      const name = doc.title.replace(/[\\/:*?"<>|]+/g, '_');
+      downloadFile(doc.content, name + '.txt', 'text/plain;charset=utf-8');
+    });
+
+    const del = document.createElement('button');
+    del.className = 'link-btn';
+    del.textContent = '[Delete]';
+    del.addEventListener('click', () => {
+      if (!confirm(`Delete "${doc.title}"? This can't be undone.`)) return;
+      notepadDocs = notepadDocs.filter(d => d !== doc);
+      saveNotepad();
+      renderNotepad();
+    });
+
+    row.append(link, dl, del);
+    notepadEls.list.appendChild(row);
+  });
+}
+
+function addDocument() {
+  const title = notepadEls.input.value.trim();
+  if (!title) return;
+  if (notepadDocs.some(d => d.title.toLowerCase() === title.toLowerCase())) {
+    alert(`A document named "${title}" already exists.`);
+    return;
+  }
+  notepadDocs.push({ title, content: '' });
+  notepadEls.input.value = '';
+  saveNotepad();
+  renderNotepad();
+}
+
+notepadEls.addBtn.addEventListener('click', addDocument);
+notepadEls.input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') addDocument();
+});
+notepadEls.editor.addEventListener('input', scheduleSave);
+notepadEls.back.addEventListener('click', e => {
+  e.preventDefault();
+  closeEditor();
+});
+
+window.addEventListener('pagehide', flushEditor);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushEditor();
+});
+
+document.getElementById('notepadDownloadBtn').addEventListener('click', () => {
+  flushEditor();
+  downloadJson(notepadDocs, 'notepad-data.json');
+});
+
+// Merge: new titles are added; a title clash with different text becomes "Title (2)", etc.
+function cleanNotepad(data) {
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter(d => d && typeof d.title === 'string' && d.title.trim())
+    .map(d => ({ title: d.title.trim(), content: typeof d.content === 'string' ? d.content : '' }));
+}
+
+function mergeNotepad(existing, incoming) {
+  const merged = existing.slice();
+  const stats = { added: 0, copies: 0, skipped: 0 };
+  const titleTaken = title => merged.some(d => d.title.toLowerCase() === title.toLowerCase());
+
+  incoming.forEach(doc => {
+    const base = doc.title.toLowerCase();
+    const alreadyHere = merged.some(d => {
+      if (d.content !== doc.content) return false;
+      const t = d.title.toLowerCase();
+      return t === base || (t.startsWith(base + ' (') && /^\d+\)$/.test(t.slice(base.length + 2)));
+    });
+
+    if (alreadyHere) {
+      stats.skipped++;
+    } else if (!titleTaken(doc.title)) {
+      merged.push(doc);
+      stats.added++;
+    } else {
+      let n = 2;
+      while (titleTaken(`${doc.title} (${n})`)) n++;
+      merged.push({ title: `${doc.title} (${n})`, content: doc.content });
+      stats.copies++;
+    }
+  });
+  return { merged, stats };
+}
+
+// .txt files are single documents (title = file name); .json files are full Notepad backups
+document.getElementById('notepadUploadBtn').addEventListener('click', () => {
+  pickFiles('.txt,.json,text/plain,application/json', true, async files => {
+    const incoming = [];
+    let skippedFiles = 0;
+
+    for (const file of files) {
+      try {
+        const text = await file.text();
+        if (/\.json$/i.test(file.name)) {
+          const docs = cleanNotepad(JSON.parse(text));
+          if (docs.length === 0) skippedFiles++;
+          incoming.push(...docs);
+        } else if (/\.txt$/i.test(file.name)) {
+          const title = file.name.replace(/\.txt$/i, '').trim();
+          if (title) incoming.push({ title, content: text });
+          else skippedFiles++;
+        } else {
+          skippedFiles++;
+        }
+      } catch (err) {
+        skippedFiles++;
+      }
+    }
+
+    if (incoming.length === 0) {
+      alert("Nothing to import: the selected file(s) don't contain any Notepad documents.");
+      return;
+    }
+    flushEditor();
+    const { merged, stats } = mergeNotepad(notepadDocs, incoming);
+    notepadDocs = merged;
+    saveNotepad();
+    renderNotepad();
+
+    const parts = [];
+    if (stats.added) parts.push(`${stats.added} added`);
+    if (stats.copies) parts.push(`${stats.copies} added as a copy (the title already existed with different text)`);
+    if (stats.skipped) parts.push(`${stats.skipped} already in your list`);
+    if (skippedFiles) parts.push(`${skippedFiles} file(s) skipped (unsupported or unreadable)`);
+    alert('Notepad: ' + parts.join(', ') + '.');
+  });
+});
+
+document.getElementById('notepadClearBtn').addEventListener('click', () => {
+  if (!confirm('This will delete all of your Notepad data. Continue?')) return;
+  clearTimeout(saveTimer);
+  clearTimeout(maxWaitTimer);
+  saveTimer = maxWaitTimer = null;
+  editorDirty = false;
+  openDocTitle = null;
+  store.remove(STORAGE_KEYS.notepad);
+  notepadDocs = [];
+  showNotepadView(false);
+  renderNotepad();
+});
+
+renderNotepad();
 
 // Color Picker
 
@@ -266,7 +624,10 @@ function setFromHsv() {
 }
  
 function setFromRgb(r, g, b) {
-  [state.hue, state.sat, state.val] = rgbToHsv(r, g, b);
+  const [h, s, v] = rgbToHsv(r, g, b);
+  if (s > 0) state.hue = h;
+  state.sat = s;
+  state.val = v;
   applyRgb(r, g, b);
   syncCursorAndSliders();
 }
@@ -325,6 +686,7 @@ let dragging = false;
 dom.svSquare.addEventListener('pointerdown', e => { dragging = true; setSvFromEvent(e); });
 window.addEventListener('pointermove', e => { if (dragging) setSvFromEvent(e); });
 window.addEventListener('pointerup', () => dragging = false);
+window.addEventListener('pointercancel', () => dragging = false);
  
 dom.hueSlider.addEventListener('input', () => {
   state.hue = Number(dom.hueSlider.value);
@@ -490,108 +852,253 @@ setFromHsv();
 
 // Converters
 
-const refDefaults = { rem: 16, em: 16, vw: 1920, vh: 1080, pct: 16 };
+const CONVERTERS = [
+    { key: 'length', title: 'Length', units: [
+        ['nm', 'nm', 1e-9], ['um', 'μm', 1e-6], ['mm', 'mm', 0.001], ['cm', 'cm', 0.01], ['m', 'm', 1], ['km', 'km', 1000],
+        ['in', 'in', 0.0254], ['ft', 'ft', 0.3048], ['yd', 'yd', 0.9144], ['mi', 'mi', 1609.344], ['nmi', 'nmi', 1852]
+    ] },
+    { key: 'mass', title: 'Mass', units: [
+        ['mg', 'mg', 1e-6], ['g', 'g', 0.001], ['kg', 'kg', 1], ['t', 't', 1000],
+        ['oz', 'oz', 0.028349523125], ['lb', 'lb', 0.45359237], ['st', 'st', 6.35029318],
+        ['ustn', 'US tn', 907.18474], ['uktn', 'UK tn', 1016.0469088]
+    ] },
+    { key: 'volume', title: 'Volume', units: [
+        ['ml', 'ml', 0.001], ['l', 'l', 1], ['m3', 'm³', 1000], ['in3', 'in³', 0.016387064], ['ft3', 'ft³', 28.316846592],
+        ['ustsp', 'US tsp', 0.00492892159375], ['ustbsp', 'US tbsp', 0.01478676478125], ['usfloz', 'US fl oz', 0.0295735295625],
+        ['uscup', 'US cup', 0.2365882365], ['uspt', 'US pt', 0.473176473], ['usqt', 'US qt', 0.946352946], ['usgal', 'US gal', 3.785411784],
+        ['ukfloz', 'UK fl oz', 0.0284130625], ['ukpt', 'UK pt', 0.56826125], ['ukgal', 'UK gal', 4.54609]
+    ] },
+    { key: 'temperature', title: 'Temperature', units: [
+        ['c', '°C', { to: v => v + 273.15, from: k => k - 273.15 }],
+        ['f', '°F', { to: v => (v - 32) * 5 / 9 + 273.15, from: k => (k - 273.15) * 9 / 5 + 32 }],
+        ['k', 'K', { to: v => v, from: k => k }],
+        ['r', '°R', { to: v => v * 5 / 9, from: k => k * 9 / 5 }]
+    ] },
+    { key: 'area', title: 'Area', units: [
+        ['mm2', 'mm²', 1e-6], ['cm2', 'cm²', 0.0001], ['m2', 'm²', 1], ['hectare', 'ha', 10000], ['km2', 'km²', 1e6],
+        ['in2', 'in²', 0.00064516], ['ft2', 'ft²', 0.09290304], ['yd2', 'yd²', 0.83612736], ['acre', 'acre', 4046.8564224], ['mi2', 'mi²', 2589988.110336]
+    ] },
+    { key: 'data', title: 'Data', units: [
+        ['bit', 'bit', 0.125], ['B', 'B', 1],
+        ['KB', 'KB', 1e3], ['MB', 'MB', 1e6], ['GB', 'GB', 1e9], ['TB', 'TB', 1e12], ['PB', 'PB', 1e15],
+        ['KiB', 'KiB', 1024], ['MiB', 'MiB', 1048576], ['GiB', 'GiB', 1073741824], ['TiB', 'TiB', 1099511627776], ['PiB', 'PiB', 1125899906842624]
+    ] },
+    { key: 'datarate', title: 'Data Rate', units: [
+        ['bps', 'bit/s', 1], ['kbps', 'kbit/s', 1e3], ['Mbps', 'Mbit/s', 1e6], ['Gbps', 'Gbit/s', 1e9],
+        ['Bps', 'B/s', 8], ['KBps', 'KB/s', 8e3], ['MBps', 'MB/s', 8e6], ['GBps', 'GB/s', 8e9]
+    ] },
+    { key: 'energy', title: 'Energy', units: [
+        ['eV', 'eV', 1.602176634e-19], ['J', 'J', 1], ['kJ', 'kJ', 1000], ['cal', 'cal', 4.184], ['kcal', 'kcal', 4184],
+        ['Wh', 'Wh', 3600], ['kWh', 'kWh', 3.6e6], ['BTU', 'BTU', 1055.05585262], ['ftlbf', 'ft·lbf', 1.3558179483314004]
+    ] },
+    { key: 'power', title: 'Power', units: [
+        ['mW', 'mW', 0.001], ['W', 'W', 1], ['kW', 'kW', 1000], ['MW', 'MW', 1e6],
+        ['hp', 'hp', 745.6998715822702], ['ps', 'PS', 735.49875], ['btuh', 'BTU/h', 0.29307107017222]
+    ] },
+    { key: 'force', title: 'Force', units: [
+        ['dyn', 'dyn', 1e-5], ['N', 'N', 1], ['kN', 'kN', 1000], ['kgf', 'kgf', 9.80665], ['lbf', 'lbf', 4.4482216152605]
+    ] },
+    { key: 'pressure', title: 'Pressure', units: [
+        ['Pa', 'Pa', 1], ['hPa', 'hPa', 100], ['kPa', 'kPa', 1000], ['MPa', 'MPa', 1e6], ['bar', 'bar', 1e5], ['atm', 'atm', 101325],
+        ['psi', 'psi', 6894.757293168], ['mmHg', 'mmHg', 133.322387415], ['torr', 'torr', 101325 / 760], ['inHg', 'inHg', 25.4 * 133.322387415]
+    ] },
+    { key: 'speed', title: 'Speed', units: [
+        ['mps', 'm/s', 1], ['kmph', 'km/h', 1 / 3.6], ['mph', 'mph', 0.44704], ['knot', 'knot', 1852 / 3600], ['ftps', 'ft/s', 0.3048], ['c', 'c', 299792458]
+    ] },
+    { key: 'time', title: 'Time', units: [
+        ['ns', 'ns', 1e-9], ['us', 'μs', 1e-6], ['ms', 'ms', 0.001], ['s', 's', 1], ['min', 'min', 60], ['h', 'h', 3600],
+        ['day', 'day', 86400], ['week', 'week', 604800], ['month', 'month', 2629800], ['year', 'year', 31557600]
+    ] },
+    { key: 'frequency', title: 'Frequency', units: [
+        ['rpm', 'rpm', 1 / 60], ['Hz', 'Hz', 1], ['kHz', 'kHz', 1e3], ['MHz', 'MHz', 1e6], ['GHz', 'GHz', 1e9]
+    ] },
+    { key: 'angle', title: 'Angle', units: [
+        ['arcsec', 'arcsec', 1 / 3600], ['arcmin', 'arcmin', 1 / 60], ['deg', 'deg', 1], ['rad', 'rad', 180 / Math.PI], ['grad', 'grad', 0.9], ['turn', 'turn', 360]
+    ] },
+    { key: 'digital', title: 'Digital',
+        refs: [
+            { key: 'rem', label: 'Root font size (rem)', value: 16 },
+            { key: 'em', label: 'Parent font size (em)', value: 16 },
+            { key: 'vw', label: 'Viewport width (vw)', value: 1920 },
+            { key: 'vh', label: 'Viewport height (vh)', value: 1080 },
+            { key: 'pct', label: 'Reference size (%)', value: 16 }
+        ],
+        units: [
+            ['px', 'px', 1], ['pt', 'pt', 96 / 72], ['pc', 'pc', 16], ['in', 'in', 96], ['cm', 'cm', 96 / 2.54], ['mm', 'mm', 96 / 25.4],
+            ['em', 'em', () => getRef('em')],
+            ['rem', 'rem', () => getRef('rem')],
+            ['vw', 'vw', () => getRef('vw') / 100],
+            ['vh', 'vh', () => getRef('vh') / 100],
+            ['vmin', 'vmin', () => Math.min(getRef('vw'), getRef('vh')) / 100],
+            ['vmax', 'vmax', () => Math.max(getRef('vw'), getRef('vh')) / 100],
+            ['%', '%', () => getRef('pct') / 100]
+        ] }
+];
 
-const factors = {
-    length: { mm: 0.001, cm: 0.01, m: 1, km: 1000, um: 1e-6, nm: 1e-9, in: 0.0254, ft: 0.3048, yd: 0.9144, mi: 1609.344, nmi: 1852 },
-    mass: { mg: 1e-6, g: 0.001, kg: 1, t: 1000, oz: 0.028349523125, lb: 0.45359237, st: 6.35029318, ustn: 907.18474, uktn: 1016.0469088 },
-    volume: { ml: 0.001, l: 1, m3: 1000, in3: 0.016387064, ft3: 28.316846592, ustsp: 0.00492892159375, ustbsp: 0.01478676478125, usfloz: 0.0295735295625, uscup: 0.2365882365, uspt: 0.473176473, usqt: 0.946352946, usgal: 3.785411784, ukfloz: 0.0284130625, ukpt: 0.56826125, ukgal: 4.54609 },
-    area: { mm2: 1e-6, cm2: 0.0001, m2: 1, km2: 1000000, in2: 0.00064516, ft2: 0.09290304, yd2: 0.83612736, mi2: 2589988.110336, acre: 4046.8564224, hectare: 10000 },
-    data: { bit: 0.125, B: 1, KB: 1000, MB: 1000000, GB: 1000000000, TB: 1000000000000, KiB: 1024, MiB: 1048576, GiB: 1073741824, TiB: 1099511627776 },
-    energy: { J: 1, kJ: 1000, cal: 4.184, kcal: 4184, Wh: 3600, kWh: 3600000, eV: 1.602176634e-19, BTU: 1055.05585262 },
-    pressure: { Pa: 1, kPa: 1000, bar: 100000, atm: 101325, psi: 6894.757293168, mmHg: 133.322387415, torr: 133.3223684210526 },
-    speed: { mps: 1, kmph: 0.277777778, mph: 0.44704, knot: 0.514444444, ftps: 0.3048 },
-    time: { s: 1, min: 60, h: 3600, day: 86400, week: 604800, month: 2629800, year: 31557600 },
-    digital: {
-        px: 1, pt: 1.3333333333333333, pc: 16, in: 96, cm: 37.795275590551185, mm: 3.7795275590551185,
-        em: () => getRef("em"),
-        rem: () => getRef("rem"),
-        vw: () => getRef("vw") / 100,
-        vh: () => getRef("vh") / 100,
-        vmin: () => Math.min(getRef("vw"), getRef("vh")) / 100,
-        vmax: () => Math.max(getRef("vw"), getRef("vh")) / 100,
-        "%": () => getRef("pct") / 100
-    }
-};
-
-const toKelvin = { c: v => v + 273.15, f: v => (v - 32) * 5 / 9 + 273.15, k: v => v };
-const fromKelvin = { c: k => k - 273.15, f: k => (k - 273.15) * 9 / 5 + 32, k: k => k };
+const converterGroups = {};
+const refInputs = {};
 
 function getRef(name) {
-    const input = document.querySelector(`[data-ref="${name}"]`);
+    const input = refInputs[name];
     const value = parseFloat(input.value);
-    return isNaN(value) ? refDefaults[name] : value;
+    return value > 0 ? value : parseFloat(input.defaultValue);
 }
 
-function getFactor(category, unit) {
-    const factor = factors[category][unit];
-    return typeof factor === "function" ? factor() : factor;
+function makeConverter(spec) {
+    if (typeof spec === "object") return spec;
+    const factor = () => typeof spec === "function" ? spec() : spec;
+    return { to: v => v * factor(), from: b => b / factor() };
 }
 
-function toBase(category, unit, value) {
-    return category === "temperature" ? toKelvin[unit](value) : value * getFactor(category, unit);
-}
-
-function fromBase(category, unit, base) {
-    return category === "temperature" ? fromKelvin[unit](base) : base / getFactor(category, unit);
-}
-
-const lastSource = new WeakMap();
-
-function updateGroup(source) {
-    const category = source.closest("section").dataset.category;
-    const row = source.closest(".pair-row");
-    const inputs = row.querySelectorAll("input");
+function convertGroup(group, sourceId) {
+    const source = group.inputs[sourceId];
     const value = parseFloat(source.value);
+    group.last = sourceId;
 
-    lastSource.set(row, source);
-
-    if (isNaN(value)) {
-        inputs.forEach(input => input !== source && (input.value = ""));
-        return;
+    const base = isNaN(value) ? NaN : group.conv[sourceId].to(value);
+    for (const id in group.inputs) {
+        if (id === sourceId) continue;
+        const result = group.conv[id].from(base);
+        group.inputs[id].value = isFinite(result) ? Number(result.toPrecision(10)) : "";
     }
+}
 
-    const base = toBase(category, source.dataset.unit, value);
-    inputs.forEach(input => {
-        if (input === source) return;
-        const result = fromBase(category, input.dataset.unit, base);
-        input.value = Number(result.toPrecision(10));
+function buildConverters() {
+    const nav = document.getElementById("converterNav");
+    const list = document.getElementById("converterList");
+    const br = () => document.createElement("br");
+
+    CONVERTERS.forEach(cat => {
+        const anchor = "conv-" + cat.key;
+
+        const link = document.createElement("a");
+        link.href = "#" + anchor;
+        link.textContent = cat.title;
+        const navBtn = document.createElement("button");
+        navBtn.appendChild(link);
+        navBtn.addEventListener("click", e => { if (e.target !== link) link.click(); });
+        nav.appendChild(navBtn);
+
+        const heading = document.createElement("h2");
+        heading.id = anchor;
+        const back = document.createElement("a");
+        back.href = "#top";
+        back.textContent = "[Back]";
+        heading.append(back, " " + cat.title);
+
+        const section = document.createElement("section");
+        section.className = "category";
+        section.dataset.category = cat.key;
+
+        if (cat.refs) {
+            const title = document.createElement("p");
+            title.innerHTML = "<b>Reference Values</b>";
+            section.appendChild(title);
+            cat.refs.forEach(ref => {
+                const row = document.createElement("div");
+                row.className = "ref-row";
+                const label = document.createElement("label");
+                label.textContent = ref.label;
+                const input = document.createElement("input");
+                input.type = "number";
+                input.dataset.ref = ref.key;
+                input.defaultValue = ref.value;
+                input.value = ref.value;
+                refInputs[ref.key] = input;
+                row.append(label, input);
+                section.appendChild(row);
+            });
+            section.appendChild(br());
+            section.appendChild(br());
+        }
+
+        const group = { conv: {}, inputs: {}, last: null };
+        const grid = document.createElement("div");
+        grid.className = "unit-grid";
+        cat.units.forEach(([id, label, spec]) => {
+            const field = document.createElement("label");
+            field.className = "unit-field";
+            const name = document.createElement("span");
+            name.textContent = label;
+            const input = document.createElement("input");
+            input.type = "number";
+            input.step = "any";
+            input.dataset.unit = id;
+            field.append(name, input);
+            grid.appendChild(field);
+            group.conv[id] = makeConverter(spec);
+            group.inputs[id] = input;
+        });
+        section.appendChild(grid);
+        converterGroups[cat.key] = group;
+
+        list.append(heading, br(), section, br(), br());
+    });
+
+    list.addEventListener("input", e => {
+        const group = converterGroups[e.target.closest("section").dataset.category];
+        if (e.target.dataset.unit) convertGroup(group, e.target.dataset.unit);
+        else if (e.target.dataset.ref && group.last) convertGroup(group, group.last);
     });
 }
 
-document.addEventListener("input", e => {
-    if (e.target.matches("input[data-unit]")) {
-        updateGroup(e.target);
-    } else if (e.target.matches("input[data-ref]")) {
-        document.querySelectorAll('section[data-category="digital"] .pair-row').forEach(row => {
-            const source = lastSource.get(row);
-            if (source && source.value !== "") updateGroup(source);
-        });
-    }
-});
+buildConverters();
 
 // Tally
 
-let count = 0;
-  const countEl = document.getElementById('count');
-  document.getElementById('plus').onclick = () => { count++; countEl.textContent = count; };
-  document.getElementById('minus').onclick = () => { count--; countEl.textContent = count; };
-  document.getElementById('reset').onclick = () => { count = 0; countEl.textContent = count; };
+let count = Number(store.load(STORAGE_KEYS.tally, 0));
+if (!Number.isInteger(count)) count = 0;
+
+const countEl = document.getElementById('count');
+
+function setCount(value) {
+  count = value;
+  countEl.textContent = count;
+  store.save(STORAGE_KEYS.tally, count);
+}
+
+countEl.textContent = count;
+document.getElementById('plus').onclick = () => setCount(count + 1);
+document.getElementById('minus').onclick = () => setCount(count - 1);
+document.getElementById('reset').onclick = () => setCount(0);
+
+document.getElementById('tallyDownloadBtn').addEventListener('click', () => {
+  downloadJson({ count }, 'tally-data.json');
+});
+
+// Overwrites the current value (after asking, if there is one)
+document.getElementById('tallyUploadBtn').addEventListener('click', () => uploadJson(data => {
+  const value = typeof data === 'number' ? data : data && data.count;
+  if (!Number.isSafeInteger(value)) {
+    alert("That file doesn't contain a valid Tally value.");
+    return;
+  }
+  if (count !== 0 && !confirm(`(!) Warning: this will overwrite your current Tally value (${count}) with the uploaded one (${value}). The current value will be lost and can't be recovered. Continue?`)) return;
+  setCount(value);
+}));
+
+document.getElementById('tallyClearBtn').addEventListener('click', () => {
+  if (!confirm('This will delete your saved Tally value. Continue?')) return;
+  store.remove(STORAGE_KEYS.tally);
+  count = 0;
+  countEl.textContent = count;
+});
 
 // Theme
 
 const body = document.body;
  
 function setTheme(theme) {
-  body.classList.remove('dark', 'darkest');
-  if (theme === 'dark' || theme === 'darkest') {
+  body.classList.remove('dark', 'dark2');
+  if (theme === 'dark' || theme === 'dark2') {
     body.classList.add(theme);
   }
-  localStorage.setItem('theme', theme);
+  localStorage.setItem(STORAGE_KEYS.theme, theme);
 }
  
 document.getElementById('defaultTheme').onclick = () => setTheme('default');
 document.getElementById('darkTheme').onclick = () => setTheme('dark');
-document.getElementById('darkestTheme').onclick = () => setTheme('darkest');
+document.getElementById('dark2Theme').onclick = () => setTheme('dark2');
 
-setTheme(localStorage.getItem('theme') || 'default');
+const savedTheme = localStorage.getItem(STORAGE_KEYS.theme);
+setTheme(savedTheme === 'darkest' ? 'dark2' : savedTheme || 'default');
