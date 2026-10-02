@@ -180,6 +180,12 @@ img {
     flex-direction: column;
     position: fixed;
     z-index: 99999;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.side > * {
+    flex-shrink: 0;
 }
 
 .side-title {
@@ -478,6 +484,94 @@ input.fltr-output {
     font-size: 5rem;
 }
 
+.wb-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.wb-toolbar button {
+    margin: 0;
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: 0.6rem 0.8rem;
+}
+
+.wb-toolbar button.active {
+    background: #0A8F76;
+}
+
+.wb-toolbar input[type="color"] {
+    width: 3rem;
+    height: 2.75rem;
+    padding: 0.2rem;
+    cursor: pointer;
+}
+
+.wb-toolbar input[type="range"] {
+    width: 10rem;
+    padding: 0;
+    border: none;
+    accent-color: var(--main_main);
+}
+
+.wb-toolbar input[type="color"][disabled] {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.wb-zoom-label {
+    min-width: 4.5rem;
+    font-size: 1rem !important;
+}
+
+.wb-viewport {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1600 / 1000;
+    overflow: hidden;
+    outline: 0.1rem solid var(--main_black);
+    background: #D9D9D9;
+    cursor: none;
+    touch-action: none;
+    user-select: none;
+}
+
+.wb-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #FFFFFF;
+    transform-origin: 0 0;
+    cursor: none;
+    touch-action: none;
+    user-select: none;
+}
+
+.wb-viewport.panning {
+    cursor: grab;
+}
+
+.wb-viewport.panning-active {
+    cursor: grabbing;
+}
+
+.wb-cursor {
+    position: fixed;
+    display: none;
+    border: 0.0625rem solid #FFFFFF;
+    border-radius: 50%;
+    mix-blend-mode: difference;
+    pointer-events: none;
+    z-index: 100000;
+}
+
+body.dark .wb-viewport, body.dark2 .wb-viewport {
+    outline-color: var(--main_white);
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -499,6 +593,7 @@ input.fltr-output {
         padding: 5rem 0 0 0;
         float: unset;
         min-height: auto;
+        height: auto;
         display: flex;
         flex-direction: row;
         position: fixed;

@@ -16,6 +16,7 @@
             <button class="tab-btn" data-tab="home"><img src="assets/icons/home-icon.svg" alt="home" class="icon"> Home <span class="active-hide">>></span></button>
             <button class="tab-btn" data-tab="check"><img src="assets/icons/checklist-icon.svg" alt="check" class="icon"> Checklist <span class="active-hide">>></span></button>
             <button class="tab-btn" data-tab="notepad"><img src="assets/icons/notepad-icon.svg" alt="notepad" class="icon"> Notepad <span class="active-hide">>></span></button>
+            <button class="tab-btn" data-tab="whiteboard"><img src="assets/icons/whiteboard-icon.svg" alt="whiteboard" class="icon"> Whiteboard <span class="active-hide">>></span></button>
             <button class="tab-btn" data-tab="color"><img src="assets/icons/color-picker-icon.svg" alt="color" class="icon"> Color Picker <span class="active-hide">>></span></button>
             <button class="tab-btn" data-tab="converters"><img src="assets/icons/converters-icon.svg" alt="converters" class="icon"> Converters <span class="active-hide">>></span></button>
             <button class="tab-btn" data-tab="tally"><img src="assets/icons/tally-icon.svg" alt="tally" class="icon"> Tally <span class="active-hide">>></span></button>
@@ -37,7 +38,7 @@
                     <ul>
                         <li>All data (such as save files) are saved in your local browser's cache.</li>
                         <li>Internet access is required unless powered locally.</li>
-                        <li>Version: 2.3-A</li>
+                        <li>Version: 2.4-A</li>
                     </ul>
                     <br>
                     <p>&copy; 2026-Present | Made by <a href="https://corneliusatweb.com/" target="_blank">Cornelius</a> with some (primarily JS) development assistance from AI (<a href="https://claude.ai/" target="_blank">https://claude.ai/</a>).</p>
@@ -45,6 +46,8 @@
                 <br><br>
                 <h2>Change Log</h2>
                 <br><br>
+                <p>V-2.4-A (03/Oct/2026): Added a new tool (Whiteboard).</p>
+                <br>
                 <p>V-2.3-A (19/Sep/2026): Added 2 new tools (Encryptor and Decryptor). Both use an extremely secure and custom encryption system that is probably impossible to crack without a set of Keys, and even then it's impossible to know what the correct data is without knowing which is the correct Key. Security testing is still underway, though.</p>
                 <br>
                 <p>V-2.2-A (19/Sep/2026): Added a new tool (Notepad), fixed a canvas-related issue in the Color Picker, improved the Converter tool to feel less clunky, the Tally tool now saves its data, added several new data management options (including a feature to Upload data, ensuring easy data transfers), and some visual and textual elements were revamped.</p>
@@ -107,6 +110,47 @@
                     <span id="notepadStatus" class="note-status"></span>
                     <br><br>
                     <textarea id="notepadEditor" spellcheck="true"></textarea>
+                </div>
+            </div>
+            <div class="tab-panel" data-tab="whiteboard">
+                <div id="whiteboardListView">
+                    <h1>Whiteboard</h1>
+                    <br><br>
+                    <p>(i) Use the below input to type in your board title, and then press the + button (or press the [ENTER] key) to add your board to the list. From there, open the board link from the list to begin drawing. Use the [Download] button to download individual boards as PNG or [Delete] to delete the same.</p>
+                    <br><br>
+                    <div class="col-wrapper row">
+                        <div class="col90">
+                            <input type="text" placeholder="Board Name" id="whiteboardInput" style="border: 0.1rem solid var(--main_main); height: 3rem; border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                        </div>
+                        <div class="col10">
+                            <button id="whiteboardAddBtn" style="margin: 0; height: 3rem; border-top-left-radius: 0; border-bottom-left-radius: 0;">+</button>
+                        </div>
+                    </div>
+                    <br><br><br><br>
+                    <div id="whiteboardList"></div>
+                </div>
+                <div id="whiteboardEditorView" hidden>
+                    <h1 id="whiteboardEditorTitle"></h1>
+                    <br><br>
+                    <a href="#" id="whiteboardBackLink">[Back]</a>
+                    <span id="whiteboardStatus" class="note-status"></span>
+                    <br><br>
+                    <div class="wb-toolbar">
+                        <button id="wbPenBtn" class="active" title="Pen" aria-label="Pen">✏️</button>
+                        <button id="wbEraserBtn" title="Eraser" aria-label="Eraser">🧽</button>
+                        <input type="color" id="wbColor" value="#000000" title="Pen color">
+                        <input type="range" id="wbSize" min="1" max="40" value="4">
+                        <span id="wbSizeLabel">4px</span>
+                        <button id="wbUndoBtn" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↩️</button>
+                        <button id="wbRedoBtn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled>↪️</button>
+                        <button id="wbClearBtn" title="Clear board" aria-label="Clear board">🗑️</button>
+                        <span aria-hidden="true">🔍</span>
+                        <input type="range" id="wbZoom" min="0" max="1000" value="500" title="Zoom" aria-label="Zoom">
+                        <button id="wbZoomLabel" class="wb-zoom-label" title="Reset zoom to 100%">100%</button>
+                    </div>
+                    <div id="wbViewport" class="wb-viewport">
+                        <canvas id="wbCanvas" class="wb-canvas"></canvas>
+                    </div>
                 </div>
             </div>
             <div class="tab-panel" data-tab="color">
@@ -263,6 +307,15 @@
                     <button id="notepadDownloadBtn">Download</button>
                     <button id="notepadUploadBtn">Upload .txt/.json</button>
                     <button id="notepadClearBtn">Delete</button>
+                </div>
+                <br><br>
+                <p>(i) <b>Whiteboard Data Options</b> -- Here you can control all of your Whiteboard data that this Web App creates, collects, and stores.</p>
+                <p style="color: red;">(!) Beware! The following options control ALL stored entries. To modify individual ones, visit the dedicated tool panel!</p>
+                <br>
+                <div class="data-actions">
+                    <button id="whiteboardDownloadBtn">Download</button>
+                    <button id="whiteboardUploadBtn">Upload .png/.json</button>
+                    <button id="whiteboardClearBtn">Delete</button>
                 </div>
                 <br><br>
                 <p>(i) <b>Tally Data Options</b> -- Here you can control the Tally value that this Web App creates and stores.</p>

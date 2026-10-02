@@ -20,6 +20,7 @@ document.querySelectorAll('.tabs-wrapper').forEach(el => initTabs(el));
 const STORAGE_KEYS = {
   checklist: 'checklist-items',
   notepad: 'notepad-documents',
+  whiteboard: 'whiteboard-documents',
   tally: 'tally-count',
   theme: 'theme'
 };
@@ -410,7 +411,7 @@ function mergeNotepad(existing, incoming) {
     } else {
       let n = 2;
       while (titleTaken(`${doc.title} (${n})`)) n++;
-      merged.push({ title: `${doc.title} (${n})`, content: doc.content });
+      merged.push({ ...doc, title: `${doc.title} (${n})` });
       stats.copies++;
     }
   });
@@ -475,6 +476,747 @@ document.getElementById('notepadClearBtn').addEventListener('click', () => {
 });
 
 renderNotepad();
+
+// Whiteboard
+
+const WB_W = 1600;
+const WB_H = 1000;
+
+const wbEls = {
+  listView: document.getElementById('whiteboardListView'),
+  editorView: document.getElementById('whiteboardEditorView'),
+  list: document.getElementById('whiteboardList'),
+  input: document.getElementById('whiteboardInput'),
+  addBtn: document.getElementById('whiteboardAddBtn'),
+  title: document.getElementById('whiteboardEditorTitle'),
+  status: document.getElementById('whiteboardStatus'),
+  back: document.getElementById('whiteboardBackLink'),
+  canvas: document.getElementById('wbCanvas'),
+  penBtn: document.getElementById('wbPenBtn'),
+  eraserBtn: document.getElementById('wbEraserBtn'),
+  color: document.getElementById('wbColor'),
+  size: document.getElementById('wbSize'),
+  sizeLabel: document.getElementById('wbSizeLabel'),
+  clearBtn: document.getElementById('wbClearBtn'),
+  undoBtn: document.getElementById('wbUndoBtn'),
+  redoBtn: document.getElementById('wbRedoBtn'),
+  viewport: document.getElementById('wbViewport'),
+  zoomSlider: document.getElementById('wbZoom'),
+  zoomLabel: document.getElementById('wbZoomLabel')
+};
+
+wbEls.canvas.width = WB_W;
+wbEls.canvas.height = WB_H;
+const wbCtx = wbEls.canvas.getContext('2d');
+
+// Per-board tool settings saved with each board: { mode, color, sizes: { pen, eraser } }
+function wbCleanTool(t) {
+  if (!t || typeof t !== 'object') return undefined;
+  const clampSize = (v, [min, max]) => Math.min(max, Math.max(min, Math.round(Number(v)) || min));
+  const limits = { pen: [1, 40], eraser: [5, 120] };
+  const sizes = t.sizes || {};
+  return {
+    mode: t.mode === 'eraser' ? 'eraser' : 'pen',
+    color: typeof t.color === 'string' && /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : '#000000',
+    sizes: {
+      pen: clampSize(sizes.pen, limits.pen),
+      eraser: clampSize(sizes.eraser, limits.eraser)
+    }
+  };
+}
+
+function wbCleanDoc(d) {
+  const doc = {
+    title: d.title,
+    content: typeof d.content === 'string' && d.content.startsWith('data:image/') ? d.content : ''
+  };
+  const tool = wbCleanTool(d.tool);
+  if (tool) doc.tool = tool;
+  return doc;
+}
+
+let wbDocs = (() => {
+  const saved = store.load(STORAGE_KEYS.whiteboard, []);
+  if (!Array.isArray(saved)) return [];
+  return saved
+    .filter(d => d && typeof d.title === 'string')
+    .map(d => wbCleanDoc(d));
+})();
+
+let wbOpenTitle = null;
+let wbDirty = false;
+let wbSaveTimer = null;
+let wbMaxWaitTimer = null;
+let wbLoadToken = 0;
+
+// Tool state: each tool remembers its own thickness
+const wbTool = {
+  mode: 'pen',
+  color: '#000000',
+  sizes: { pen: 4, eraser: 30 },
+  limits: { pen: [1, 40], eraser: [5, 120] }
+};
+
+function saveWhiteboard() {
+  try {
+    store.save(STORAGE_KEYS.whiteboard, wbDocs);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Autosave
+
+function flushWhiteboard() {
+  clearTimeout(wbSaveTimer);
+  clearTimeout(wbMaxWaitTimer);
+  wbSaveTimer = wbMaxWaitTimer = null;
+  if (!wbDirty || wbOpenTitle === null) return;
+
+  const doc = wbDocs.find(d => d.title === wbOpenTitle);
+  if (!doc) return;
+  doc.content = wbEls.canvas.toDataURL('image/png');
+  doc.tool = { mode: wbTool.mode, color: wbTool.color, sizes: { ...wbTool.sizes } };
+
+  if (saveWhiteboard()) {
+    wbDirty = false;
+    wbEls.status.textContent = 'Saved';
+  } else {
+    wbEls.status.textContent = 'Could not save (browser storage may be full)';
+  }
+}
+
+function scheduleWbSave() {
+  wbDirty = true;
+  wbEls.status.textContent = 'Saving...';
+  clearTimeout(wbSaveTimer);
+  wbSaveTimer = setTimeout(flushWhiteboard, 600);
+  if (!wbMaxWaitTimer) wbMaxWaitTimer = setTimeout(flushWhiteboard, 5000);
+}
+
+// Tools
+
+function applyWbTool() {
+  const mode = wbTool.mode;
+  const [min, max] = wbTool.limits[mode];
+  wbEls.penBtn.classList.toggle('active', mode === 'pen');
+  wbEls.eraserBtn.classList.toggle('active', mode === 'eraser');
+  wbEls.color.value = wbTool.color;
+  wbEls.color.disabled = mode === 'eraser';
+  wbEls.size.min = min;
+  wbEls.size.max = max;
+  wbEls.size.value = wbTool.sizes[mode];
+  wbEls.sizeLabel.textContent = wbTool.sizes[mode] + 'px';
+}
+
+function saveWbTool() {
+  if (wbOpenTitle !== null) scheduleWbSave();
+}
+
+wbEls.penBtn.addEventListener('click', () => { wbTool.mode = 'pen'; applyWbTool(); saveWbTool(); });
+wbEls.eraserBtn.addEventListener('click', () => { wbTool.mode = 'eraser'; applyWbTool(); saveWbTool(); });
+wbEls.color.addEventListener('input', () => { wbTool.color = wbEls.color.value; saveWbTool(); });
+wbEls.size.addEventListener('input', () => {
+  wbTool.sizes[wbTool.mode] = Number(wbEls.size.value);
+  wbEls.sizeLabel.textContent = wbEls.size.value + 'px';
+  saveWbTool();
+});
+
+wbEls.clearBtn.addEventListener('click', () => {
+  if (wbDrawing) return;
+  wbCommit({ type: 'clear' });
+  wbRedraw();
+  scheduleWbSave();
+});
+
+// Drawing + history
+//
+// The board is "base image + list of actions". Undo/redo replays the actions on top of
+// the base, so history stays tiny in memory. Older actions get baked into the base.
+
+const WB_MAX_ACTIONS = 100;
+
+const wbBase = document.createElement('canvas');
+wbBase.width = WB_W;
+wbBase.height = WB_H;
+const wbBaseCtx = wbBase.getContext('2d');
+
+let wbActions = [];
+let wbRedoStack = [];
+let wbCurrent = null;
+let wbDrawing = false;
+let wbLast = null;
+let wbMid = null;
+
+function wbPoint(e) {
+  const r = wbEls.canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) * (WB_W / r.width),
+    y: (e.clientY - r.top) * (WB_H / r.height)
+  };
+}
+
+function wbApplyStyle(ctx, s) {
+  const erasing = s.mode === 'eraser';
+  ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over';
+  const paint = erasing ? '#000000' : s.color;
+  ctx.strokeStyle = paint;
+  ctx.fillStyle = paint;
+  ctx.lineWidth = s.size;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+}
+
+function wbDot(ctx, s, p) {
+  wbApplyStyle(ctx, s);
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, s.size / 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Draws one smoothed segment towards p; pos holds the running { last, mid }
+function wbSegment(ctx, s, pos, p) {
+  wbApplyStyle(ctx, s);
+  const mid = { x: (pos.last.x + p.x) / 2, y: (pos.last.y + p.y) / 2 };
+  ctx.beginPath();
+  ctx.moveTo(pos.mid.x, pos.mid.y);
+  ctx.quadraticCurveTo(pos.last.x, pos.last.y, mid.x, mid.y);
+  ctx.stroke();
+  pos.mid = mid;
+  pos.last = p;
+}
+
+function wbReplay(ctx, action) {
+  if (action.type === 'clear') {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, WB_W, WB_H);
+    return;
+  }
+  const pts = action.pts;
+  wbDot(ctx, action, pts[0]);
+  const pos = { last: pts[0], mid: pts[0] };
+  for (let i = 1; i < pts.length; i++) wbSegment(ctx, action, pos, pts[i]);
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function wbRedraw() {
+  wbCtx.globalCompositeOperation = 'source-over';
+  wbCtx.clearRect(0, 0, WB_W, WB_H);
+  wbCtx.drawImage(wbBase, 0, 0);
+  wbActions.forEach(a => wbReplay(wbCtx, a));
+  updateWbHistoryButtons();
+}
+
+function updateWbHistoryButtons() {
+  wbEls.undoBtn.disabled = wbActions.length === 0;
+  wbEls.redoBtn.disabled = wbRedoStack.length === 0;
+}
+
+function wbCommit(action) {
+  wbActions.push(action);
+  wbRedoStack = [];
+  if (wbActions.length > WB_MAX_ACTIONS) {
+    wbReplay(wbBaseCtx, wbActions.shift());
+  }
+  updateWbHistoryButtons();
+}
+
+function wbResetHistory() {
+  wbActions = [];
+  wbRedoStack = [];
+  wbCurrent = null;
+  wbDrawing = false;
+  updateWbHistoryButtons();
+}
+
+function wbUndo() {
+  if (wbDrawing || wbActions.length === 0) return;
+  wbRedoStack.push(wbActions.pop());
+  wbRedraw();
+  scheduleWbSave();
+}
+
+function wbRedo() {
+  if (wbDrawing || wbRedoStack.length === 0) return;
+  wbActions.push(wbRedoStack.pop());
+  wbRedraw();
+  scheduleWbSave();
+}
+
+wbEls.undoBtn.addEventListener('click', wbUndo);
+wbEls.redoBtn.addEventListener('click', wbRedo);
+
+document.addEventListener('keydown', e => {
+  if (wbEls.editorView.hidden || wbEls.editorView.offsetParent === null) return;
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const key = e.key.toLowerCase();
+  if (key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    wbUndo();
+  } else if (key === 'z' && e.shiftKey) {
+    e.preventDefault();
+    wbRedo();
+  }
+});
+
+// Panning (Space + drag, or middle mouse button) and zoom
+
+let wbSpace = false;
+let wbPan = null;
+
+function wbEditorVisible() {
+  return !wbEls.editorView.hidden && wbEls.editorView.offsetParent !== null;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' || !wbEditorVisible()) return;
+  e.preventDefault();
+  if (!wbSpace) {
+    wbSpace = true;
+    wbEls.viewport.classList.add('panning');
+    updateWbCursor();
+  }
+});
+
+function wbStopSpace() {
+  if (!wbSpace) return;
+  wbSpace = false;
+  wbEls.viewport.classList.remove('panning');
+  updateWbCursor();
+}
+
+document.addEventListener('keyup', e => { if (e.code === 'Space') wbStopSpace(); });
+window.addEventListener('blur', wbStopSpace);
+
+// The board frame stays a fixed size; zoom + pan are a view transform on the canvas inside it.
+// Offsets are stored as fractions of the frame size so they survive window resizes.
+const wbView = { z: 1, fx: 0, fy: 0, min: 0.25, max: 4 };
+
+const wbZoomToSlider = z => 1000 * Math.log(z / wbView.min) / Math.log(wbView.max / wbView.min);
+const wbSliderToZoom = s => wbView.min * Math.pow(wbView.max / wbView.min, s / 1000);
+
+function wbApplyView() {
+  const vw = wbEls.viewport.clientWidth;
+  const vh = wbEls.viewport.clientHeight;
+  if (!vw || !vh) return;
+
+  const z = wbView.z;
+  const cw = vw * z;
+  const ch = vh * z;
+  let x = wbView.fx * vw;
+  let y = wbView.fy * vh;
+  x = cw <= vw ? (vw - cw) / 2 : Math.min(0, Math.max(vw - cw, x));
+  y = ch <= vh ? (vh - ch) / 2 : Math.min(0, Math.max(vh - ch, y));
+  wbView.fx = x / vw;
+  wbView.fy = y / vh;
+
+  wbEls.canvas.style.transform = `translate(${x}px, ${y}px) scale(${z})`;
+  wbEls.zoomLabel.textContent = Math.round(z * 100) + '%';
+  wbEls.zoomSlider.value = Math.round(wbZoomToSlider(z));
+  updateWbCursor();
+}
+
+// Sets the zoom while keeping the board point under (ax, ay) (screen coords) in place
+function wbSetZoom(z, ax, ay) {
+  z = Math.min(wbView.max, Math.max(wbView.min, z));
+  const vr = wbEls.viewport.getBoundingClientRect();
+  if (!vr.width || !vr.height) return;
+  const px = ax - vr.left;
+  const py = ay - vr.top;
+  const bx = (px - wbView.fx * vr.width) / wbView.z;
+  const by = (py - wbView.fy * vr.height) / wbView.z;
+  wbView.z = z;
+  wbView.fx = (px - bx * z) / vr.width;
+  wbView.fy = (py - by * z) / vr.height;
+  wbApplyView();
+}
+
+function wbViewCenter() {
+  const vr = wbEls.viewport.getBoundingClientRect();
+  return { x: vr.left + vr.width / 2, y: vr.top + vr.height / 2 };
+}
+
+function wbResetZoom() {
+  wbView.z = 1;
+  wbView.fx = wbView.fy = 0;
+  wbEls.canvas.style.transform = '';
+  wbEls.zoomLabel.textContent = '100%';
+  wbEls.zoomSlider.value = 500;
+}
+
+wbEls.zoomSlider.addEventListener('input', () => {
+  let z = wbSliderToZoom(Number(wbEls.zoomSlider.value));
+  if (Math.abs(z - 1) < 0.04) z = 1; // snap to 100%
+  const c = wbViewCenter();
+  wbSetZoom(z, c.x, c.y);
+});
+
+wbEls.zoomLabel.addEventListener('click', () => {
+  const c = wbViewCenter();
+  wbSetZoom(1, c.x, c.y);
+});
+
+window.addEventListener('resize', wbApplyView);
+
+wbEls.viewport.addEventListener('wheel', e => {
+  // Ctrl/Cmd + wheel (also trackpad pinch) zooms towards the pointer
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    wbSetZoom(wbView.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY);
+    return;
+  }
+  // While zoomed in, plain wheel / two-finger scroll pans the board
+  if (wbView.z > 1.001) {
+    e.preventDefault();
+    const k = e.deltaMode === 1 ? 16 : 1;
+    let dx = e.deltaX * k;
+    let dy = e.deltaY * k;
+    if (e.shiftKey && !dx) { dx = dy; dy = 0; }
+    wbView.fx -= dx / wbEls.viewport.clientWidth;
+    wbView.fy -= dy / wbEls.viewport.clientHeight;
+    wbApplyView();
+  }
+}, { passive: false });
+
+wbEls.viewport.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); });
+wbEls.viewport.addEventListener('pointerdown', e => {
+  const middle = e.pointerType === 'mouse' && e.button === 1;
+  if ((wbSpace && e.button === 0) || middle) {
+    e.preventDefault();
+    wbEls.viewport.setPointerCapture(e.pointerId);
+    wbPan = { x: e.clientX, y: e.clientY, fx: wbView.fx, fy: wbView.fy };
+    wbEls.viewport.classList.add('panning', 'panning-active');
+    updateWbCursor();
+    return;
+  }
+  if (e.button !== 0 && e.pointerType === 'mouse') return;
+  e.preventDefault();
+  wbEls.viewport.setPointerCapture(e.pointerId);
+  wbDrawing = true;
+  const p = wbPoint(e);
+  wbCurrent = {
+    type: 'stroke',
+    mode: wbTool.mode,
+    color: wbTool.color,
+    size: wbTool.sizes[wbTool.mode],
+    pts: [p]
+  };
+  wbLast = wbMid = p;
+  wbDot(wbCtx, wbCurrent, p);
+});
+
+wbEls.viewport.addEventListener('pointermove', e => {
+  if (wbPan) {
+    wbView.fx = wbPan.fx + (e.clientX - wbPan.x) / wbEls.viewport.clientWidth;
+    wbView.fy = wbPan.fy + (e.clientY - wbPan.y) / wbEls.viewport.clientHeight;
+    wbApplyView();
+    return;
+  }
+  if (!wbDrawing) return;
+  const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  const pos = { last: wbLast, mid: wbMid };
+  (events.length ? events : [e]).forEach(ev => {
+    const p = wbPoint(ev);
+    wbCurrent.pts.push(p);
+    wbSegment(wbCtx, wbCurrent, pos, p);
+  });
+  wbLast = pos.last;
+  wbMid = pos.mid;
+});
+
+function endWbStroke() {
+  if (wbPan) {
+    wbPan = null;
+    wbEls.viewport.classList.remove('panning-active');
+    if (!wbSpace) wbEls.viewport.classList.remove('panning');
+    updateWbCursor();
+    return;
+  }
+  if (!wbDrawing) return;
+  wbDrawing = false;
+  wbCtx.globalCompositeOperation = 'source-over';
+  wbCommit(wbCurrent);
+  wbCurrent = null;
+  scheduleWbSave();
+}
+
+wbEls.viewport.addEventListener('pointerup', endWbStroke);
+wbEls.viewport.addEventListener('pointercancel', endWbStroke);
+
+// Brush-size cursor ring (scaled from board pixels to on-screen pixels)
+
+const wbCursor = document.createElement('div');
+wbCursor.className = 'wb-cursor';
+document.body.appendChild(wbCursor);
+let wbCursorPos = null;
+
+function updateWbCursor() {
+  if (!wbCursorPos || wbSpace || wbPan) {
+    wbCursor.style.display = 'none';
+    return;
+  }
+  const rect = wbEls.canvas.getBoundingClientRect();
+  const d = Math.max(2, wbTool.sizes[wbTool.mode] * (rect.width / WB_W));
+  wbCursor.style.display = 'block';
+  wbCursor.style.width = wbCursor.style.height = d + 'px';
+  wbCursor.style.left = (wbCursorPos.x - d / 2) + 'px';
+  wbCursor.style.top = (wbCursorPos.y - d / 2) + 'px';
+}
+
+function trackWbCursor(e) {
+  if (e.pointerType === 'touch') {
+    wbCursorPos = null;
+  } else {
+    wbCursorPos = { x: e.clientX, y: e.clientY };
+  }
+  updateWbCursor();
+}
+
+wbEls.viewport.addEventListener('pointerenter', trackWbCursor);
+wbEls.viewport.addEventListener('pointermove', trackWbCursor);
+wbEls.viewport.addEventListener('pointerleave', () => {
+  wbCursorPos = null;
+  updateWbCursor();
+});
+wbEls.size.addEventListener('input', updateWbCursor);
+wbEls.penBtn.addEventListener('click', updateWbCursor);
+wbEls.eraserBtn.addEventListener('click', updateWbCursor);
+
+// Views
+
+function showWhiteboardView(editing) {
+  wbEls.listView.hidden = editing;
+  wbEls.editorView.hidden = !editing;
+}
+
+function openWhiteboard(title) {
+  const doc = wbDocs.find(d => d.title === title);
+  if (!doc) return;
+  wbOpenTitle = title;
+  wbDirty = false;
+  wbEls.title.textContent = title;
+  wbEls.status.textContent = 'Saved';
+  wbResetZoom();
+  wbResetHistory();
+  wbBaseCtx.clearRect(0, 0, WB_W, WB_H);
+  wbRedraw();
+
+  const token = ++wbLoadToken;
+  if (doc.content) {
+    const img = new Image();
+    img.onload = () => {
+      if (token !== wbLoadToken) return;
+      wbBaseCtx.drawImage(img, 0, 0, WB_W, WB_H);
+      wbRedraw();
+    };
+    img.src = doc.content;
+  }
+  if (doc.tool) {
+    wbTool.mode = doc.tool.mode;
+    wbTool.color = doc.tool.color;
+    wbTool.sizes = { ...doc.tool.sizes };
+  }
+  applyWbTool();
+  showWhiteboardView(true);
+}
+
+function closeWhiteboard() {
+  flushWhiteboard();
+  wbOpenTitle = null;
+  wbLoadToken++;
+  wbResetHistory();
+  showWhiteboardView(false);
+  renderWhiteboard();
+}
+
+// Renders a stored board onto an opaque white background and returns a PNG blob
+function wbToPngBlob(doc) {
+  return new Promise(resolve => {
+    const c = document.createElement('canvas');
+    c.width = WB_W;
+    c.height = WB_H;
+    const x = c.getContext('2d');
+    x.fillStyle = '#FFFFFF';
+    x.fillRect(0, 0, WB_W, WB_H);
+    const finish = () => c.toBlob(resolve, 'image/png');
+    if (!doc.content) return finish();
+    const img = new Image();
+    img.onload = () => { x.drawImage(img, 0, 0, WB_W, WB_H); finish(); };
+    img.onerror = finish;
+    img.src = doc.content;
+  });
+}
+
+function renderWhiteboard() {
+  wbEls.list.innerHTML = '';
+  if (wbDocs.length === 0) {
+    const empty = document.createElement('p');
+    empty.textContent = 'No boards yet.';
+    empty.style.opacity = '0.6';
+    wbEls.list.appendChild(empty);
+    return;
+  }
+
+  wbDocs.forEach(doc => {
+    const row = document.createElement('div');
+    row.className = 'item doc-item';
+
+    const link = document.createElement('a');
+    link.href = '#';
+    link.textContent = doc.title;
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      openWhiteboard(doc.title);
+    });
+
+    const dl = document.createElement('button');
+    dl.className = 'link-btn';
+    dl.textContent = '[Download]';
+    dl.addEventListener('click', async () => {
+      const name = doc.title.replace(/[\\/:*?"<>|]+/g, '_');
+      downloadFile(await wbToPngBlob(doc), name + '.png', 'image/png');
+    });
+
+    const del = document.createElement('button');
+    del.className = 'link-btn';
+    del.textContent = '[Delete]';
+    del.addEventListener('click', () => {
+      if (!confirm(`Delete "${doc.title}"? This can't be undone.`)) return;
+      wbDocs = wbDocs.filter(d => d !== doc);
+      saveWhiteboard();
+      renderWhiteboard();
+    });
+
+    row.append(link, dl, del);
+    wbEls.list.appendChild(row);
+  });
+}
+
+function addWhiteboard() {
+  const title = wbEls.input.value.trim();
+  if (!title) return;
+  if (wbDocs.some(d => d.title.toLowerCase() === title.toLowerCase())) {
+    alert(`A board named "${title}" already exists.`);
+    return;
+  }
+  wbDocs.push({ title, content: '' });
+  wbEls.input.value = '';
+  saveWhiteboard();
+  renderWhiteboard();
+}
+
+wbEls.addBtn.addEventListener('click', addWhiteboard);
+wbEls.input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') addWhiteboard();
+});
+wbEls.back.addEventListener('click', e => {
+  e.preventDefault();
+  closeWhiteboard();
+});
+
+window.addEventListener('pagehide', flushWhiteboard);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushWhiteboard();
+});
+
+// Data options
+
+document.getElementById('whiteboardDownloadBtn').addEventListener('click', () => {
+  flushWhiteboard();
+  downloadJson(wbDocs, 'whiteboard-data.json');
+});
+
+function cleanWhiteboard(data) {
+  if (!Array.isArray(data)) return [];
+  return data
+    .filter(d => d && typeof d.title === 'string' && d.title.trim())
+    .map(d => wbCleanDoc({ ...d, title: d.title.trim() }));
+}
+
+// Fits an uploaded image onto a board-sized canvas (never upscaled) and returns it as a PNG data URL
+function wbImportImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = WB_W;
+      c.height = WB_H;
+      const s = Math.min(1, WB_W / img.width, WB_H / img.height);
+      const w = img.width * s;
+      const h = img.height * s;
+      c.getContext('2d').drawImage(img, (WB_W - w) / 2, (WB_H - h) / 2, w, h);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/png'));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('bad image'));
+    };
+    img.src = url;
+  });
+}
+
+// .png files are single boards (title = file name); .json files are full Whiteboard backups
+document.getElementById('whiteboardUploadBtn').addEventListener('click', () => {
+  pickFiles('.png,.json,image/png,application/json', true, async files => {
+    const incoming = [];
+    let skippedFiles = 0;
+
+    for (const file of files) {
+      try {
+        if (/\.json$/i.test(file.name)) {
+          const docs = cleanWhiteboard(JSON.parse(await file.text()));
+          if (docs.length === 0) skippedFiles++;
+          incoming.push(...docs);
+        } else if (/\.png$/i.test(file.name)) {
+          const title = file.name.replace(/\.png$/i, '').trim();
+          if (title) incoming.push({ title, content: await wbImportImage(file) });
+          else skippedFiles++;
+        } else {
+          skippedFiles++;
+        }
+      } catch (err) {
+        skippedFiles++;
+      }
+    }
+
+    if (incoming.length === 0) {
+      alert("Nothing to import: the selected file(s) don't contain any Whiteboard boards.");
+      return;
+    }
+    flushWhiteboard();
+    const { merged, stats } = mergeNotepad(wbDocs, incoming);
+    wbDocs = merged;
+    if (!saveWhiteboard()) alert('Could not save everything (browser storage may be full).');
+    renderWhiteboard();
+
+    const parts = [];
+    if (stats.added) parts.push(`${stats.added} added`);
+    if (stats.copies) parts.push(`${stats.copies} added as a copy (the title already existed with a different drawing)`);
+    if (stats.skipped) parts.push(`${stats.skipped} already in your list`);
+    if (skippedFiles) parts.push(`${skippedFiles} file(s) skipped (unsupported or unreadable)`);
+    alert('Whiteboard: ' + parts.join(', ') + '.');
+  });
+});
+
+document.getElementById('whiteboardClearBtn').addEventListener('click', () => {
+  if (!confirm('This will delete all of your Whiteboard data. Continue?')) return;
+  clearTimeout(wbSaveTimer);
+  clearTimeout(wbMaxWaitTimer);
+  wbSaveTimer = wbMaxWaitTimer = null;
+  wbDirty = false;
+  wbOpenTitle = null;
+  wbLoadToken++;
+  wbResetHistory();
+  store.remove(STORAGE_KEYS.whiteboard);
+  wbDocs = [];
+  showWhiteboardView(false);
+  renderWhiteboard();
+});
+
+renderWhiteboard();
 
 // Color Picker
 
