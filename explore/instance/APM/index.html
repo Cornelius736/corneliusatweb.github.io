@@ -38,7 +38,7 @@
                     <ul>
                         <li>All data (such as save files) are saved in your local browser's cache.</li>
                         <li>Internet access is required unless powered locally.</li>
-                        <li>Version: 2.4-A</li>
+                        <li>Version: 2.4-B</li>
                     </ul>
                     <br>
                     <p>&copy; 2026-Present | Made by <a href="https://corneliusatweb.com/" target="_blank">Cornelius</a> with some (primarily JS) development assistance from AI (<a href="https://claude.ai/" target="_blank">https://claude.ai/</a>).</p>
@@ -46,6 +46,8 @@
                 <br><br>
                 <h2>Change Log</h2>
                 <br><br>
+                <p>V-2.4-B (03/Oct/2026): Added a Bucket Tool to the Whiteboard.</p>
+                <br>
                 <p>V-2.4-A (03/Oct/2026): Added a new tool (Whiteboard).</p>
                 <br>
                 <p>V-2.3-A (19/Sep/2026): Added 2 new tools (Encryptor and Decryptor). Both use an extremely secure and custom encryption system that is probably impossible to crack without a set of Keys, and even then it's impossible to know what the correct data is without knowing which is the correct Key. Security testing is still underway, though.</p>
@@ -138,6 +140,7 @@
                     <div class="wb-toolbar">
                         <button id="wbPenBtn" class="active" title="Pen" aria-label="Pen">✏️</button>
                         <button id="wbEraserBtn" title="Eraser" aria-label="Eraser">🧽</button>
+                        <button id="wbBucketBtn" title="Bucket fill" aria-label="Bucket fill">🎨</button>
                         <input type="color" id="wbColor" value="#000000" title="Pen color">
                         <input type="range" id="wbSize" min="1" max="40" value="4">
                         <span id="wbSizeLabel">4px</span>

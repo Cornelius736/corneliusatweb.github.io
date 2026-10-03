@@ -568,6 +568,18 @@ input.fltr-output {
     z-index: 100000;
 }
 
+.wb-cursor-fill::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0.25rem;
+    height: 0.25rem;
+    background: #FFFFFF;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
 body.dark .wb-viewport, body.dark2 .wb-viewport {
     outline-color: var(--main_white);
 }

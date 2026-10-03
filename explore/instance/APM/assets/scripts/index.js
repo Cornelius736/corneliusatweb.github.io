@@ -494,6 +494,7 @@ const wbEls = {
   canvas: document.getElementById('wbCanvas'),
   penBtn: document.getElementById('wbPenBtn'),
   eraserBtn: document.getElementById('wbEraserBtn'),
+  bucketBtn: document.getElementById('wbBucketBtn'),
   color: document.getElementById('wbColor'),
   size: document.getElementById('wbSize'),
   sizeLabel: document.getElementById('wbSizeLabel'),
@@ -516,7 +517,7 @@ function wbCleanTool(t) {
   const limits = { pen: [1, 40], eraser: [5, 120] };
   const sizes = t.sizes || {};
   return {
-    mode: t.mode === 'eraser' ? 'eraser' : 'pen',
+    mode: ['pen', 'eraser', 'bucket'].includes(t.mode) ? t.mode : 'pen',
     color: typeof t.color === 'string' && /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : '#000000',
     sizes: {
       pen: clampSize(sizes.pen, limits.pen),
@@ -599,15 +600,23 @@ function scheduleWbSave() {
 
 function applyWbTool() {
   const mode = wbTool.mode;
-  const [min, max] = wbTool.limits[mode];
+  const limits = wbTool.limits[mode]; // the bucket has no thickness
   wbEls.penBtn.classList.toggle('active', mode === 'pen');
   wbEls.eraserBtn.classList.toggle('active', mode === 'eraser');
+  wbEls.bucketBtn.classList.toggle('active', mode === 'bucket');
+  wbEls.viewport.classList.toggle('bucket', mode === 'bucket');
   wbEls.color.value = wbTool.color;
   wbEls.color.disabled = mode === 'eraser';
-  wbEls.size.min = min;
-  wbEls.size.max = max;
-  wbEls.size.value = wbTool.sizes[mode];
-  wbEls.sizeLabel.textContent = wbTool.sizes[mode] + 'px';
+  wbEls.size.disabled = !limits;
+  if (limits) {
+    wbEls.size.min = limits[0];
+    wbEls.size.max = limits[1];
+    wbEls.size.value = wbTool.sizes[mode];
+    wbEls.sizeLabel.textContent = wbTool.sizes[mode] + 'px';
+  } else {
+    wbEls.sizeLabel.textContent = 'fill';
+  }
+  updateWbCursor();
 }
 
 function saveWbTool() {
@@ -616,6 +625,7 @@ function saveWbTool() {
 
 wbEls.penBtn.addEventListener('click', () => { wbTool.mode = 'pen'; applyWbTool(); saveWbTool(); });
 wbEls.eraserBtn.addEventListener('click', () => { wbTool.mode = 'eraser'; applyWbTool(); saveWbTool(); });
+wbEls.bucketBtn.addEventListener('click', () => { wbTool.mode = 'bucket'; applyWbTool(); saveWbTool(); });
 wbEls.color.addEventListener('input', () => { wbTool.color = wbEls.color.value; saveWbTool(); });
 wbEls.size.addEventListener('input', () => {
   wbTool.sizes[wbTool.mode] = Number(wbEls.size.value);
@@ -687,7 +697,97 @@ function wbSegment(ctx, s, pos, p) {
   pos.last = p;
 }
 
+// Bucket fill. Pixels are compared as they look on the white board (transparent = white), within a
+// tolerance so anti-aliased edges are included. The fill is then grown 2px *underneath* the existing
+// pixels, so no light halo is left around lines.
+function wbFloodFill(ctx, sx, sy, hex) {
+  sx = Math.floor(sx);
+  sy = Math.floor(sy);
+  if (sx < 0 || sy < 0 || sx >= WB_W || sy >= WB_H) return;
+
+  const img = ctx.getImageData(0, 0, WB_W, WB_H);
+  const d = img.data;
+  const T = 40;
+  const fr = parseInt(hex.slice(1, 3), 16);
+  const fg = parseInt(hex.slice(3, 5), 16);
+  const fb = parseInt(hex.slice(5, 7), 16);
+
+  const si = (sy * WB_W + sx) * 4;
+  const sa = d[si + 3] / 255;
+  const sk = 255 * (1 - sa);
+  const sr = d[si] * sa + sk;
+  const sg = d[si + 1] * sa + sk;
+  const sb = d[si + 2] * sa + sk;
+
+  const match = i => {
+    const a = d[i + 3] / 255;
+    const k = 255 * (1 - a);
+    return Math.abs(d[i] * a + k - sr) <= T &&
+           Math.abs(d[i + 1] * a + k - sg) <= T &&
+           Math.abs(d[i + 2] * a + k - sb) <= T;
+  };
+
+  const N = WB_W * WB_H;
+  let mask = new Uint8Array(N);
+  const start = sy * WB_W + sx;
+  const stack = [start];
+  mask[start] = 1;
+  while (stack.length) {
+    const p = stack.pop();
+    const x = p % WB_W;
+    let n;
+    if (x > 0 && !mask[n = p - 1] && match(n * 4)) { mask[n] = 1; stack.push(n); }
+    if (x < WB_W - 1 && !mask[n = p + 1] && match(n * 4)) { mask[n] = 1; stack.push(n); }
+    if (p >= WB_W && !mask[n = p - WB_W] && match(n * 4)) { mask[n] = 1; stack.push(n); }
+    if (p < N - WB_W && !mask[n = p + WB_W] && match(n * 4)) { mask[n] = 1; stack.push(n); }
+  }
+
+  // Grow the region by 2px (marked 2)
+  for (let iter = 0; iter < 2; iter++) {
+    const next = mask.slice();
+    for (let p = 0; p < N; p++) {
+      if (!mask[p]) continue;
+      const x = p % WB_W;
+      if (x > 0 && !next[p - 1]) next[p - 1] = 2;
+      if (x < WB_W - 1 && !next[p + 1]) next[p + 1] = 2;
+      if (p >= WB_W && !next[p - WB_W]) next[p - WB_W] = 2;
+      if (p < N - WB_W && !next[p + WB_W]) next[p + WB_W] = 2;
+    }
+    mask = next;
+  }
+
+  for (let p = 0; p < N; p++) {
+    const m = mask[p];
+    if (!m) continue;
+    const i = p * 4;
+    if (m === 1) {
+      d[i] = fr; d[i + 1] = fg; d[i + 2] = fb; d[i + 3] = 255;
+    } else {
+      // existing pixel composited over the fill colour
+      const a = d[i + 3] / 255;
+      d[i] = d[i] * a + fr * (1 - a);
+      d[i + 1] = d[i + 1] * a + fg * (1 - a);
+      d[i + 2] = d[i + 2] * a + fb * (1 - a);
+      d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+// The smoothing leaves the stroke half a step short of the pointer; this closes that gap
+function wbFinishStroke(ctx, s, pos) {
+  wbApplyStyle(ctx, s);
+  ctx.beginPath();
+  ctx.moveTo(pos.mid.x, pos.mid.y);
+  ctx.lineTo(pos.last.x, pos.last.y);
+  ctx.stroke();
+}
+
 function wbReplay(ctx, action) {
+  if (action.type === 'fill') {
+    wbFloodFill(ctx, action.x, action.y, action.color);
+    return;
+  }
   if (action.type === 'clear') {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, WB_W, WB_H);
@@ -697,6 +797,7 @@ function wbReplay(ctx, action) {
   wbDot(ctx, action, pts[0]);
   const pos = { last: pts[0], mid: pts[0] };
   for (let i = 1; i < pts.length; i++) wbSegment(ctx, action, pos, pts[i]);
+  if (pts.length > 1) wbFinishStroke(ctx, action, pos);
   ctx.globalCompositeOperation = 'source-over';
 }
 
@@ -892,6 +993,15 @@ wbEls.viewport.addEventListener('pointerdown', e => {
   }
   if (e.button !== 0 && e.pointerType === 'mouse') return;
   e.preventDefault();
+  if (wbTool.mode === 'bucket') {
+    const p = wbPoint(e);
+    if (p.x < 0 || p.y < 0 || p.x >= WB_W || p.y >= WB_H) return;
+    const action = { type: 'fill', x: Math.floor(p.x), y: Math.floor(p.y), color: wbTool.color };
+    wbReplay(wbCtx, action);
+    wbCommit(action);
+    scheduleWbSave();
+    return;
+  }
   wbEls.viewport.setPointerCapture(e.pointerId);
   wbDrawing = true;
   const p = wbPoint(e);
@@ -935,6 +1045,7 @@ function endWbStroke() {
   }
   if (!wbDrawing) return;
   wbDrawing = false;
+  if (wbCurrent.pts.length > 1) wbFinishStroke(wbCtx, wbCurrent, { last: wbLast, mid: wbMid });
   wbCtx.globalCompositeOperation = 'source-over';
   wbCommit(wbCurrent);
   wbCurrent = null;
@@ -957,7 +1068,10 @@ function updateWbCursor() {
     return;
   }
   const rect = wbEls.canvas.getBoundingClientRect();
-  const d = Math.max(2, wbTool.sizes[wbTool.mode] * (rect.width / WB_W));
+  const bucket = wbTool.mode === 'bucket';
+  // The bucket gets a small fixed marker (ring + centre dot) showing the exact fill point
+  const d = bucket ? 18 : Math.max(2, wbTool.sizes[wbTool.mode] * (rect.width / WB_W));
+  wbCursor.classList.toggle('wb-cursor-fill', bucket);
   wbCursor.style.display = 'block';
   wbCursor.style.width = wbCursor.style.height = d + 'px';
   wbCursor.style.left = (wbCursorPos.x - d / 2) + 'px';
