@@ -114,7 +114,7 @@ ul, ol {
 .body_bar {
     width: 75%;
     margin: auto;
-    padding: 3rem 0;
+    padding: 1.5rem 0;
     flex: 1;
 }
 
@@ -122,6 +122,7 @@ ul, ol {
     background: var(--main_black);
     color: var(--main_white);
     padding: 2rem 1.5rem;
+    text-align: center;
 }
 
 .footer_bar a:hover {
@@ -132,7 +133,7 @@ ul, ol {
     color: var(--main_special);
 }
 
-.center {
+.center, .project_media_img_container {
     text-align: center;
 }
 
@@ -141,9 +142,9 @@ ul, ol {
 }
 
 .fancy_hr {
+    background: linear-gradient(to right, transparent, var(--main_special), transparent);
     border: 0;
     height: 0.0625rem;
-    background: linear-gradient(to right, transparent, var(--main_special), transparent);
     position: relative;
     margin: 1rem 0;
 }
@@ -180,12 +181,71 @@ ul, ol {
     display: none;
 }
 
-.project_media_img_container {
-    text-align: center;
-}
-
 .project_media_img {
     width: 18%;
+}
+
+.col_container {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.col_25 {
+    width: 25%;
+    float: left;
+    padding: 0 0.5rem;
+}
+
+.col_33 {
+    width: 33.33%;
+    float: left;
+    padding: 0 0.5rem;
+}
+
+.col_50 {
+    width: 50%;
+    float: left;
+    padding: 0 0.5rem;
+}
+
+.col_75 {
+    width: 75%;
+    float: left;
+    padding: 0 0.5rem;
+}
+
+.col_25:first-of-type, .col_33:first-of-type, .col_50:first-of-type, .col_75:first-of-type {
+    padding-left: 0;
+}
+
+.col_25:last-of-type, .col_33:last-of-type, .col_50:last-of-type, .col_75:last-of-type {
+    padding-right: 0;
+}
+
+.col_100 {
+    width: 100%;
+    float: left;
+    padding: 0.5rem 0;
+}
+
+.col_100:first-of-type {
+    padding-top: 0;
+}
+
+.col_100:last-of-type {
+    padding-bottom: 0;
+}
+
+.sub_txt {
+    color: #A1A1A1;
+}
+
+.or_card button:first-of-type {
+    margin-right: 1rem;
+}
+.or_card button:last-of-type {
+    margin-left: 1rem;
 }
 
 @media screen and (max-width: 37.5rem) {
@@ -201,11 +261,29 @@ ul, ol {
     .body_bar {
         width: 90%;
     }
+    .col_25, .col_33, .col_50, .col_75 {
+        width: 100%;
+        padding: 0.5rem 0;
+    }
+    .col_25:first-of-type, .col_33:first-of-type, .col_50:first-of-type, .col_75:first-of-type {
+        padding-top: 0;
+    }
+    .col_25:last-of-type, .col_33:last-of-type, .col_50:last-of-type, .col_75:last-of-type {
+        padding-bottom: 0;
+    }
     .project_media_img {
         width: 100%;
         margin: 0.5rem 0;
     }
-    .footer_bar {
-        text-align: center;
+    .or_card button {
+        width: 100%;
+    }
+    .or_card button:first-of-type {
+        margin: 0;
+        margin-bottom: 1rem;
+    }
+    .or_card button:last-of-type {
+        margin: 0;
+        margin-top: 1rem;
     }
 }
