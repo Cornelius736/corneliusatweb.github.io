@@ -109,6 +109,7 @@ ul, ol {
 
 .navigation_bar a.special:hover {
     background: var(--main_main);
+    color: var(--main_white);
 }
 
 .body_bar {
@@ -244,8 +245,23 @@ ul, ol {
 .or_card button:first-of-type {
     margin-right: 1rem;
 }
+
 .or_card button:last-of-type {
     margin-left: 1rem;
+}
+
+#loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000;
+    transition: opacity 0.8s ease;
+}
+
+#intro {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 @media screen and (max-width: 37.5rem) {
