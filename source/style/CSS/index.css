@@ -290,6 +290,10 @@ hr {
     .navigation_bar p {
         margin: 0.5rem 0;
     }
+    .navigation_bar.r a, .navigation_bar.r a:hover {
+        border: none;
+        padding: 0;
+    }
     .body_bar {
         width: 90%;
     }
